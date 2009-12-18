@@ -479,7 +479,7 @@ main = defaultMain
                 (Positive (y :: Int))
                  -> let bh = b1 `max` b2
                         bl = b1 `min` b2
-                    in (bh-bl) :. () == cutBounds ((bl,bh,bs) :. ()) ((x+bh) :. ())
+                    in ((bh-bl) `div` bs) :. () == cutBounds ((bl,bh,bs) :. ()) ((x+bh) :. ())
             -- @-node:gcross.20091217190104.1533:(bl,bh,bs) :. ()
             -- @+node:gcross.20091217190104.1534:(bl,bh,bs) :. (cl,ch,cs) :. ()
             ,testProperty "(bl,bh,bs) :. (cl,ch,cs) :. ()" $
@@ -497,7 +497,7 @@ main = defaultMain
                         bl = b1 `min` b2
                         ch = c1 `max` c2
                         cl = c1 `min` c2
-                    in (bh-bl) :. (ch-cl) :. () == cutBounds ((bl,bh,bs) :. (cl,ch,cs) :. ()) ((y+bh) :. (x+ch) :. ())
+                    in ((bh-bl) `div` bs) :. ((ch-cl) `div` cs) :. () == cutBounds ((bl,bh,bs) :. (cl,ch,cs) :. ()) ((y+bh) :. (x+ch) :. ())
             -- @-node:gcross.20091217190104.1534:(bl,bh,bs) :. (cl,ch,cs) :. ()
             -- @+node:gcross.20091217190104.1535:a :. (bl,bh) :. (cl,ch,cs) :. ()
             ,testProperty "a :. (bl,bh) :. (cl,ch,cs) :. ()" $
@@ -515,7 +515,7 @@ main = defaultMain
                         bl = b1 `min` b2
                         ch = c1 `max` c2
                         cl = c1 `min` c2
-                    in (bh-bl) :. (ch-cl) :. () == cutBounds (a :. (bl,bh) :. (cl,ch,cs) :. ()) (x :. (y+bh) :. (z+ch) :. ())
+                    in (bh-bl) :. ((ch-cl) `div` cs) :. () == cutBounds (a :. (bl,bh) :. (cl,ch,cs) :. ()) (x :. (y+bh) :. (z+ch) :. ())
             -- @-node:gcross.20091217190104.1535:a :. (bl,bh) :. (cl,ch,cs) :. ()
             -- @-others
             ]

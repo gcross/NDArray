@@ -87,9 +87,9 @@ instance CutStrides c v vv => CutStrides ((Int,Int) :. c) (Int :. v) (Int :. vv)
 
 instance CutStrides c v vv => CutStrides ((Int,Int,Int) :. c) (Int :. v) (Int :. vv) where
     cutStrides ((_,_,skip) :. cs) (stride :. vs) = (skip*stride) :. cutStrides cs vs
-    cutBounds ((lo,hi,_) :. cs) (bound :. vs) =
+    cutBounds ((lo,hi,skip) :. cs) (bound :. vs) =
         assert (lo >= 0 || hi < bound) $
-            (hi-lo) :. cutBounds cs vs
+            ((hi-lo) `div` skip)  :. cutBounds cs vs
 -- @-node:gcross.20091217190104.1459:CutStrides
 -- @-node:gcross.20091217190104.1266:Classes
 -- @+node:gcross.20091217190104.1268:Types
