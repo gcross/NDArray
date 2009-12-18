@@ -10,8 +10,12 @@
 
 -- @<< Import needed modules >>
 -- @+node:gcross.20091217190104.1412:<< Import needed modules >>
+import Control.Applicative
+
 import qualified Data.Vec as V
 import Data.Vec((:.)(..))
+
+import Debug.Trace
 
 import Test.HUnit
 import Test.Framework
@@ -26,6 +30,11 @@ import Data.NDArray
 -- @nl
 
 -- @+others
+-- @+node:gcross.20091217190104.2175:Functions
+-- @+node:gcross.20091217190104.2176:echo
+echo x = trace (show x) x
+-- @-node:gcross.20091217190104.2176:echo
+-- @-node:gcross.20091217190104.2175:Functions
 -- @-others
 
 main = defaultMain
@@ -40,33 +49,33 @@ main = defaultMain
             \(x :: Int) ->
                 contiguousStridesFromShape (x :. ())
                 ==
-                x :. ()
+                1 :. ()
         -- @-node:gcross.20091217190104.1419:length 1 case
         -- @+node:gcross.20091217190104.1422:length 2 case
         ,testProperty "length 2 case" $
             \(x :: Int) (y :: Int) ->
                 contiguousStridesFromShape (x :. y :. ())
                 ==
-                (x*y) :. y :. ()
+                y :. 1 :. ()
         -- @-node:gcross.20091217190104.1422:length 2 case
         -- @+node:gcross.20091217190104.1424:length 3 case
         ,testProperty "length 3 case" $
             \(x :: Int) (y :: Int) (z :: Int) ->
                 contiguousStridesFromShape (x :. y :. z :. ())
                 ==
-                (x*y*z) :. (y*z) :. z :. ()
+                (y*z) :. z :. 1 :. ()
         -- @-node:gcross.20091217190104.1424:length 3 case
         -- @+node:gcross.20091217190104.1426:length 4 case
         ,testProperty "length 4 case" $
             \(x :: Int) (y :: Int) (z :: Int) (w :: Int) ->
                 contiguousStridesFromShape (x :. y :. z :. w :. ())
                 ==
-                (x*y*w*z) :. (y*w*z) :. (z*w) :. w :. ()
+                (y*w*z) :. (z*w) :. w :. 1 :. ()
         -- @-node:gcross.20091217190104.1426:length 4 case
         -- @-others
         ]
     -- @-node:gcross.20091217190104.1417:contiguousStridesFromShape
-    -- @+node:gcross.20091217190104.1428:Cut
+    -- @+node:gcross.20091217190104.1428:cuts
     ,testGroup "cuts"
         -- @    @+others
         -- @+node:gcross.20091217190104.1429:cutOffset
@@ -329,29 +338,32 @@ main = defaultMain
             -- @-others
             ]
         -- @-node:gcross.20091217190104.1483:cutStrides
-        -- @+node:gcross.20091217190104.1519:cutBounds
-        ,testGroup "cutBounds"
+        -- @+node:gcross.20091217190104.1519:cutShape
+        ,testGroup "cutShape"
             -- @    @+others
             -- @+node:gcross.20091217190104.1520:()
             [testCase "()" $
                 assertEqual
                     "Is non-cut the identity on ()?"
                     ()
-                    (cutBounds () ())
+                    (cutShape () ())
+            -- @nonl
             -- @-node:gcross.20091217190104.1520:()
             -- @+node:gcross.20091217190104.1521:() :. ()
             ,testProperty "() :. ()" $
                 \(x :: Int) ->
                     x :. ()
                     ==
-                    cutBounds (() :. ()) (x :. ())
+                    cutShape (() :. ()) (x :. ())
+            -- @nonl
             -- @-node:gcross.20091217190104.1521:() :. ()
             -- @+node:gcross.20091217190104.1522:() :. () :. ()
             ,testProperty "() :. () :. ()" $
                 \(y :: Int) (x :: Int) ->
                     y :. x :. ()
                     ==
-                    cutBounds (() :. () :. ()) (y :. x :. ())
+                    cutShape (() :. () :. ()) (y :. x :. ())
+            -- @nonl
             -- @-node:gcross.20091217190104.1522:() :. () :. ()
             -- @+node:gcross.20091217190104.1523:a :. ()
             ,testProperty "a :. ()" $
@@ -361,7 +373,8 @@ main = defaultMain
                 ->
                     ()
                     ==
-                    cutBounds (a :. ()) (x :. ())
+                    cutShape (a :. ()) (x :. ())
+            -- @nonl
             -- @-node:gcross.20091217190104.1523:a :. ()
             -- @+node:gcross.20091217190104.1524:b :. a :. ()
             ,testProperty "b :. a :. ()" $
@@ -373,7 +386,8 @@ main = defaultMain
                 ->
                     ()
                     ==
-                    cutBounds (b :. a :. ()) (y :. x :. ())
+                    cutShape (b :. a :. ()) (y :. x :. ())
+            -- @nonl
             -- @-node:gcross.20091217190104.1524:b :. a :. ()
             -- @+node:gcross.20091217190104.1525:() :. a :. ()
             ,testProperty "() :. a :. ()" $
@@ -384,7 +398,8 @@ main = defaultMain
                 ->
                     y :. ()
                     ==
-                    cutBounds (() :. a :. ()) (y :. x :. ())
+                    cutShape (() :. a :. ()) (y :. x :. ())
+            -- @nonl
             -- @-node:gcross.20091217190104.1525:() :. a :. ()
             -- @+node:gcross.20091217190104.1526:a :. () :. ()
             ,testProperty "a :. () :. ()" $
@@ -395,7 +410,8 @@ main = defaultMain
                 ->
                     x :. ()
                     ==
-                    cutBounds (a :. () :. ()) (y :. x :. ())
+                    cutShape (a :. () :. ()) (y :. x :. ())
+            -- @nonl
             -- @-node:gcross.20091217190104.1526:a :. () :. ()
             -- @+node:gcross.20091217190104.1527:(al,ah) :. ()
             ,testProperty "(al,ah) :. ()" $
@@ -405,7 +421,8 @@ main = defaultMain
                 (Positive (x :: Int))
                  -> let ah = a1 `max` a2
                         al = a1 `min` a2
-                    in (ah-al) :. () == cutBounds ((al,ah) :. ()) ((x+ah) :. ())
+                    in (ah-al) :. () == cutShape ((al,ah) :. ()) ((x+ah) :. ())
+            -- @nonl
             -- @-node:gcross.20091217190104.1527:(al,ah) :. ()
             -- @+node:gcross.20091217190104.1528:(bl,bh) :. (al,ah) :. ()
             ,testProperty "(bl,bh) :. (al,ah) :. ()" $
@@ -420,7 +437,8 @@ main = defaultMain
                         al = a1 `min` a2
                         bh = a1 `max` b2
                         bl = a1 `min` b2
-                    in (bh-bl) :. (ah-al) :. () == cutBounds ((bl,bh) :. (al,ah) :. ()) ((y+bh) :. (x+ah) :. ())
+                    in (bh-bl) :. (ah-al) :. () == cutShape ((bl,bh) :. (al,ah) :. ()) ((y+bh) :. (x+ah) :. ())
+            -- @nonl
             -- @-node:gcross.20091217190104.1528:(bl,bh) :. (al,ah) :. ()
             -- @+node:gcross.20091217190104.1529:() :. (al,ah) :. ()
             ,testProperty "() :. (al,ah) :. ()" $
@@ -431,7 +449,8 @@ main = defaultMain
                 (Positive (y :: Int))
                  -> let ah = a1 `max` a2
                         al = a1 `min` a2
-                    in y :. (ah-al) :. () == cutBounds (() :. (al,ah) :. ()) (y :. (x+ah) :. ())
+                    in y :. (ah-al) :. () == cutShape (() :. (al,ah) :. ()) (y :. (x+ah) :. ())
+            -- @nonl
             -- @-node:gcross.20091217190104.1529:() :. (al,ah) :. ()
             -- @+node:gcross.20091217190104.1530:(al,ah) :. () :. ()
             ,testProperty "(al,ah) :. () :. ()" $
@@ -442,7 +461,8 @@ main = defaultMain
                 (Positive (y :: Int))
                  -> let ah = a1 `max` a2
                         al = a1 `min` a2
-                    in (ah-al) :. x :. () == cutBounds ((al,ah) :. () :. ()) ((y+ah) :. x :. ())
+                    in (ah-al) :. x :. () == cutShape ((al,ah) :. () :. ()) ((y+ah) :. x :. ())
+            -- @nonl
             -- @-node:gcross.20091217190104.1530:(al,ah) :. () :. ()
             -- @+node:gcross.20091217190104.1531:(al,ah) :. b :. ()
             ,testProperty "(al,ah) :. () :. ()" $
@@ -454,7 +474,8 @@ main = defaultMain
                 (Positive (y :: Int))
                  -> let ah = a1 `max` a2
                         al = a1 `min` a2
-                    in (ah-al) :. () == cutBounds ((al,ah) :. b :. ()) ((y+ah) :. x :. ())
+                    in (ah-al) :. () == cutShape ((al,ah) :. b :. ()) ((y+ah) :. x :. ())
+            -- @nonl
             -- @-node:gcross.20091217190104.1531:(al,ah) :. b :. ()
             -- @+node:gcross.20091217190104.1532:a :. (bl,bh) :. ()
             ,testProperty "a :. (bl,bh) :. ()" $
@@ -466,7 +487,8 @@ main = defaultMain
                 (Positive (y :: Int))
                  -> let bh = b1 `max` b2
                         bl = b1 `min` b2
-                    in (bh-bl) :. () == cutBounds (a :. (bl,bh) :. ()) (y :. (x+bh) :. ())
+                    in (bh-bl) :. () == cutShape (a :. (bl,bh) :. ()) (y :. (x+bh) :. ())
+            -- @nonl
             -- @-node:gcross.20091217190104.1532:a :. (bl,bh) :. ()
             -- @+node:gcross.20091217190104.1533:(bl,bh,bs) :. ()
             ,testProperty "(bl,bh,bs) :. ()" $
@@ -479,7 +501,8 @@ main = defaultMain
                 (Positive (y :: Int))
                  -> let bh = b1 `max` b2
                         bl = b1 `min` b2
-                    in ((bh-bl) `div` bs) :. () == cutBounds ((bl,bh,bs) :. ()) ((x+bh) :. ())
+                    in ((bh-bl) `div` bs) :. () == cutShape ((bl,bh,bs) :. ()) ((x+bh) :. ())
+            -- @nonl
             -- @-node:gcross.20091217190104.1533:(bl,bh,bs) :. ()
             -- @+node:gcross.20091217190104.1534:(bl,bh,bs) :. (cl,ch,cs) :. ()
             ,testProperty "(bl,bh,bs) :. (cl,ch,cs) :. ()" $
@@ -497,7 +520,8 @@ main = defaultMain
                         bl = b1 `min` b2
                         ch = c1 `max` c2
                         cl = c1 `min` c2
-                    in ((bh-bl) `div` bs) :. ((ch-cl) `div` cs) :. () == cutBounds ((bl,bh,bs) :. (cl,ch,cs) :. ()) ((y+bh) :. (x+ch) :. ())
+                    in ((bh-bl) `div` bs) :. ((ch-cl) `div` cs) :. () == cutShape ((bl,bh,bs) :. (cl,ch,cs) :. ()) ((y+bh) :. (x+ch) :. ())
+            -- @nonl
             -- @-node:gcross.20091217190104.1534:(bl,bh,bs) :. (cl,ch,cs) :. ()
             -- @+node:gcross.20091217190104.1535:a :. (bl,bh) :. (cl,ch,cs) :. ()
             ,testProperty "a :. (bl,bh) :. (cl,ch,cs) :. ()" $
@@ -515,14 +539,20 @@ main = defaultMain
                         bl = b1 `min` b2
                         ch = c1 `max` c2
                         cl = c1 `min` c2
-                    in (bh-bl) :. ((ch-cl) `div` cs) :. () == cutBounds (a :. (bl,bh) :. (cl,ch,cs) :. ()) (x :. (y+bh) :. (z+ch) :. ())
+                    in (bh-bl) :. ((ch-cl) `div` cs) :. () == cutShape (a :. (bl,bh) :. (cl,ch,cs) :. ()) (x :. (y+bh) :. (z+ch) :. ())
+            -- @nonl
             -- @-node:gcross.20091217190104.1535:a :. (bl,bh) :. (cl,ch,cs) :. ()
             -- @-others
             ]
-        -- @-node:gcross.20091217190104.1519:cutBounds
+        -- @nonl
+        -- @-node:gcross.20091217190104.1519:cutShape
         -- @-others
         ]
-    -- @-node:gcross.20091217190104.1428:Cut
+    -- @-node:gcross.20091217190104.1428:cuts
+    -- @+node:gcross.20091217190104.1542:fromList/toList
+    ,testProperty "fromList/toList" $
+        liftA2 (==) (toList . fromList :: [Int] -> [Int]) id
+    -- @-node:gcross.20091217190104.1542:fromList/toList
     -- @-others
     -- @-node:gcross.20091217190104.1416:<< Tests >>
     -- @nl
