@@ -102,8 +102,7 @@ instance CutStrides c v vv => CutStrides ((Int,Int,Int) :. c) (Int :. v) (Int :.
     cutStrides ((_,_,skip) :. cs) (stride :. vs) = (skip*stride) :. cutStrides cs vs
     cutShape ((lo,hi,skip) :. cs) (bound :. vs) =
         assert (lo >= 0 || hi < bound) $
-            ((hi-lo) `div` skip)  :. cutShape cs vs
--- @nonl
+            ((hi-lo-1) `div` skip + 1)  :. cutShape cs vs
 -- @-node:gcross.20091217190104.1459:CutStrides
 -- @-node:gcross.20091217190104.1266:Classes
 -- @+node:gcross.20091217190104.1268:Types
@@ -163,8 +162,7 @@ withNDArray ::
     (Ptr dataType -> IO a) ->
     IO a
 withNDArray ndarray thunk =
-    assert (ndarrayContiguous ndarray) $
-        withForeignPtr (ndarrayData ndarray) thunk
+    withForeignPtr (ndarrayData ndarray) thunk
 -- @-node:gcross.20091217190104.1275:withNDArray
 -- @-node:gcross.20091217190104.1273:Pointer access
 -- @+node:gcross.20091217190104.1541:fromList/toList

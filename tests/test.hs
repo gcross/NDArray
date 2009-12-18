@@ -12,6 +12,7 @@
 -- @+node:gcross.20091217190104.1412:<< Import needed modules >>
 import Control.Applicative
 
+import Data.List
 import qualified Data.Vec as V
 import Data.Vec((:.)(..))
 
@@ -34,6 +35,11 @@ import Data.NDArray
 -- @+node:gcross.20091217190104.2176:echo
 echo x = trace (show x) x
 -- @-node:gcross.20091217190104.2176:echo
+-- @+node:gcross.20091218141305.1337:skipList
+skipList :: Int -> [a] -> [a]
+skipList _ [] = []
+skipList n (x:xs) = x:skipList n (drop (n-1) xs)
+-- @-node:gcross.20091218141305.1337:skipList
 -- @-node:gcross.20091217190104.2175:Functions
 -- @-others
 
@@ -75,6 +81,10 @@ main = defaultMain
         -- @-others
         ]
     -- @-node:gcross.20091217190104.1417:contiguousStridesFromShape
+    -- @+node:gcross.20091218141305.1330:fromList/toList
+    ,testProperty "fromList/toList" $
+        liftA2 (==) (toList . fromList :: [Int] -> [Int]) id
+    -- @-node:gcross.20091218141305.1330:fromList/toList
     -- @+node:gcross.20091217190104.1428:cuts
     ,testGroup "cuts"
         -- @    @+others
@@ -501,7 +511,7 @@ main = defaultMain
                 (Positive (y :: Int))
                  -> let bh = b1 `max` b2
                         bl = b1 `min` b2
-                    in ((bh-bl) `div` bs) :. () == cutShape ((bl,bh,bs) :. ()) ((x+bh) :. ())
+                    in ((bh-bl-1) `div` bs + 1) :. () == cutShape ((bl,bh,bs) :. ()) ((x+bh) :. ())
             -- @nonl
             -- @-node:gcross.20091217190104.1533:(bl,bh,bs) :. ()
             -- @+node:gcross.20091217190104.1534:(bl,bh,bs) :. (cl,ch,cs) :. ()
@@ -520,7 +530,7 @@ main = defaultMain
                         bl = b1 `min` b2
                         ch = c1 `max` c2
                         cl = c1 `min` c2
-                    in ((bh-bl) `div` bs) :. ((ch-cl) `div` cs) :. () == cutShape ((bl,bh,bs) :. (cl,ch,cs) :. ()) ((y+bh) :. (x+ch) :. ())
+                    in ((bh-bl-1) `div` bs + 1) :. ((ch-cl-1) `div` cs + 1) :. () == cutShape ((bl,bh,bs) :. (cl,ch,cs) :. ()) ((y+bh) :. (x+ch) :. ())
             -- @nonl
             -- @-node:gcross.20091217190104.1534:(bl,bh,bs) :. (cl,ch,cs) :. ()
             -- @+node:gcross.20091217190104.1535:a :. (bl,bh) :. (cl,ch,cs) :. ()
@@ -539,20 +549,59 @@ main = defaultMain
                         bl = b1 `min` b2
                         ch = c1 `max` c2
                         cl = c1 `min` c2
-                    in (bh-bl) :. ((ch-cl) `div` cs) :. () == cutShape (a :. (bl,bh) :. (cl,ch,cs) :. ()) (x :. (y+bh) :. (z+ch) :. ())
+                    in (bh-bl) :. ((ch-cl-1) `div` cs + 1) :. () == cutShape (a :. (bl,bh) :. (cl,ch,cs) :. ()) (x :. (y+bh) :. (z+ch) :. ())
             -- @nonl
             -- @-node:gcross.20091217190104.1535:a :. (bl,bh) :. (cl,ch,cs) :. ()
             -- @-others
             ]
         -- @nonl
         -- @-node:gcross.20091217190104.1519:cutShape
+        -- @+node:gcross.20091218141305.1331:cut
+        ,testGroup "cut"
+            -- @    @+others
+            -- @+node:gcross.20091218141305.1332:1D, null cut
+            [testProperty "1D, null cut" $
+                liftA2 (==) (toList . cut (() :. ()) . fromList) (id :: [Int] -> [Int])
+            -- @-node:gcross.20091218141305.1332:1D, null cut
+            -- @+node:gcross.20091218141305.1334:1D, skip 1
+            ,testProperty "1D, skip 1" $
+                \(lst :: [Int]) ->
+                    liftA2 (==) (toList . cut ((0::Int,length lst,1::Int) :. ()) . fromList) (id :: [Int] -> [Int]) lst
+            -- @-node:gcross.20091218141305.1334:1D, skip 1
+            -- @+node:gcross.20091218141305.1336:1D, skip 2
+            ,testProperty "1D, skip 2" $
+                \(lst :: [Int]) ->
+                    liftA2 (==) (toList . cut ((0::Int,length lst,2::Int) :. ()) . fromList) (skipList 2) lst
+            -- @-node:gcross.20091218141305.1336:1D, skip 2
+            -- @+node:gcross.20091218141305.1339:1D, skip 3
+            ,testProperty "1D, skip 3" $
+                \(lst :: [Int]) ->
+                    liftA2 (==) (toList . cut ((0::Int,length lst,3::Int) :. ()) . fromList) (skipList 3) lst
+            -- @-node:gcross.20091218141305.1339:1D, skip 3
+            -- @+node:gcross.20091218141305.1341:1D, skip N
+            ,testProperty "1D, skip N" $
+                \(lst :: [Int]) (Positive (n :: Int)) ->
+                    liftA2 (==) (toList . cut ((0::Int,length lst,n) :. ()) . fromList) (skipList n) lst
+            -- @-node:gcross.20091218141305.1341:1D, skip N
+            -- @+node:gcross.20091218141305.1343:1D, arbitrary (lo,hi,skip)
+            ,testProperty "1D, arbitrary (lo,hi,skip)" $ mapSize (\n -> if n > 10 then 10 else n) $
+                \
+                (Positive (x :: Int))
+                (Positive (y :: Int))
+                (Positive (z :: Int))
+                (Positive (w :: Int))
+                ->
+                let a = x
+                    b = x+y
+                    c = x+y+z
+                in (toList . cut ((a,c,b-a) :. ()) . fromList) [0..c+w] == [a,b..c-1]
+            -- @-node:gcross.20091218141305.1343:1D, arbitrary (lo,hi,skip)
+            -- @-others
+            ]
+        -- @-node:gcross.20091218141305.1331:cut
         -- @-others
         ]
     -- @-node:gcross.20091217190104.1428:cuts
-    -- @+node:gcross.20091217190104.1542:fromList/toList
-    ,testProperty "fromList/toList" $
-        liftA2 (==) (toList . fromList :: [Int] -> [Int]) id
-    -- @-node:gcross.20091217190104.1542:fromList/toList
     -- @-others
     -- @-node:gcross.20091217190104.1416:<< Tests >>
     -- @nl
