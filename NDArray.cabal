@@ -1,0 +1,16 @@
+-- @+leo-ver=4-thin
+-- @+node:gcross.20091217190104.1397:@thin NDArray.cabal
+-- @@language Haskell
+Name:           NDArray
+Version:        0.1
+Cabal-Version:  >= 1.6
+Build-Type:     Custom
+
+Library
+    Build-Depends:  base == 4.1.*,
+                    Blueprint >= 0.2,
+                    QuickCheck == 2.*,
+                    random == 1.*,
+                    Vec == 0.9.*
+-- @-node:gcross.20091217190104.1397:@thin NDArray.cabal
+-- @-leo
