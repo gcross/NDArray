@@ -24,6 +24,7 @@ import Data.Vec((:.)(..))
 import Data.Vec.Nat
 
 import Foreign.ForeignPtr
+import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
 
@@ -172,22 +173,22 @@ fromList :: Storable a => [a] -> NDArray (Int :. ()) a
 fromList list = fst . unsafePerformIO . withNewNDArray ((length list) :. ()) . go $ list
   where
     go [] _ = return ()
-    go (x:xs) ptr = poke ptr x >> go xs (ptr `plusPtr` sizeOf x)
+    go (x:xs) ptr = poke ptr x >> go xs (ptr `advancePtr` 1)
 -- @-node:gcross.20091217190104.1537:fromList
 -- @+node:gcross.20091217190104.1540:toList
 toList :: Storable a => NDArray (Int :. ()) a -> [a]
-toList ndarray = reverse . unsafePerformIO . withNDArray ndarray $ startGo
+toList ndarray = unsafePerformIO . withNDArray ndarray $ startGo
   where
     stride = V.head . ndarrayStrides $ ndarray
     size = V.head . ndarrayShape $ ndarray
 
-    startGo ptr = go [] size (ptr `plusPtr` ndarrayBaseOffset ndarray)
+    startGo = go [] size . (`advancePtr` (stride * (size - 1) + ndarrayBaseOffset ndarray))
 
     go accum 0 _ = return accum
     go accum size ptr =
         peek ptr
         >>=
-        \x -> go (x:accum) (size-1) (ptr `plusPtr` (stride * sizeOf x))
+        \x -> go (x:accum) (size-1) (ptr `advancePtr` (-stride))
 -- @-node:gcross.20091217190104.1540:toList
 -- @-node:gcross.20091217190104.1541:fromList/toList
 -- @-node:gcross.20091217190104.1270:Functions
