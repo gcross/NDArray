@@ -104,6 +104,18 @@ main = defaultMain
         ,testProperty "product" $
             liftA2 (==) (N.product . fromList) (product :: [Int] -> Int)
         -- @-node:gcross.20091219130644.1367:product
+        -- @+node:gcross.20091219130644.1375:and
+        ,testProperty "and" $
+            \flag ->
+                liftA2 (==) (N.and . fromList) (and :: [Bool] -> Bool) .
+                    if flag then map (const True) else id
+        -- @-node:gcross.20091219130644.1375:and
+        -- @+node:gcross.20091219130644.1379:or
+        ,testProperty "or" $
+            \flag ->
+                liftA2 (==) (N.or . fromList) (or :: [Bool] -> Bool) .
+                    if flag then map (const False) else id
+        -- @-node:gcross.20091219130644.1379:or
         -- @-others
         ]
     -- @-node:gcross.20091219130644.1364:folding

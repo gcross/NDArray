@@ -4,6 +4,7 @@
 
 -- @<< Language extensions >>
 -- @+node:gcross.20091217190104.1420:<< Language extensions >>
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
@@ -17,13 +18,14 @@ module Data.NDArray where
 
 -- @<< Import needed modules >>
 -- @+node:gcross.20091217190104.1265:<< Import needed modules >>
-import Prelude hiding (foldl,foldr)
+import Prelude hiding (foldl,foldr,catch,any,all,and,or)
 
 import Control.Applicative.Infix
 import Control.Applicative
 import Control.Exception
 import Control.Monad
 
+import Data.Typeable
 import qualified Data.Vec as V
 import Data.Vec((:.)(..))
 import Data.Vec.Nat
@@ -151,6 +153,13 @@ instance Indexable a => Indexable (Int :. a) where
     numberOfElementsFromShape (shape :. rest_shape) = shape * numberOfElementsFromShape rest_shape
 -- @-node:gcross.20091218165002.1490:Indexable
 -- @-node:gcross.20091217190104.1266:Classes
+-- @+node:gcross.20091219130644.1371:Exceptions
+-- @+node:gcross.20091219130644.1372:Found
+data Found a = Found a deriving (Show,Typeable)
+
+instance (Show a, Typeable a) => Exception (Found a)
+-- @-node:gcross.20091219130644.1372:Found
+-- @-node:gcross.20091219130644.1371:Exceptions
 -- @+node:gcross.20091217190104.1268:Types
 -- @+node:gcross.20091217190104.1269:NDArray
 data NDArray indexType dataType =
@@ -343,6 +352,59 @@ sum, product ::
 sum = foldl (+) 0
 product = foldl (*) 1
 -- @-node:gcross.20091219130644.1362:sum/product
+-- @+node:gcross.20091219130644.1370:find
+find ::
+    (Indexable indexType, Storable dataType) =>
+    (dataType -> Bool) ->
+    NDArray indexType dataType ->
+    Maybe dataType
+find cond ndarray =
+    unsafePerformIO
+    .
+    withNDArray ndarray
+    $
+    \ptr ->
+        (
+            (if ndarrayContiguous ndarray
+                then
+                    fastWalk
+                        (ndarrayShape ndarray)
+                else
+                    walk
+                        (ndarrayShape ndarray)
+                        (ndarrayStrides ndarray)
+            )
+                thunk
+                (ptr `advancePtr` ndarrayBaseOffset ndarray)
+                ()
+            >>
+            return Nothing
+        ) `catch` (
+            \(Found location) -> fmap Just (peek . wordPtrToPtr $ location)
+        )
+
+  where
+    thunk ptr _ =
+        peek ptr
+        >>=
+        \value ->
+            if cond value
+                then throw (Found . ptrToWordPtr $ ptr)
+                else return ()
+-- @-node:gcross.20091219130644.1370:find
+-- @+node:gcross.20091219130644.1373:any/all/and/or
+any, all ::
+    (Indexable indexType, Storable dataType) =>
+    (dataType -> Bool) ->
+    NDArray indexType dataType ->
+    Bool
+any cond = maybe False (const True) . find cond
+all cond = maybe True (const False) . find (not . cond)
+
+or, and :: Indexable indexType => NDArray indexType Bool -> Bool
+or = any id
+and = all id
+-- @-node:gcross.20091219130644.1373:any/all/and/or
 -- @-node:gcross.20091219130644.1361:Folding
 -- @-node:gcross.20091217190104.1270:Functions
 -- @-others
