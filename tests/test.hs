@@ -26,7 +26,15 @@ import Test.QuickCheck
 
 import System.IO.Unsafe
 
-import Data.NDArray
+import Data.NDArray (cut
+                    ,cutOffset
+                    ,cutStrides
+                    ,cutShape
+                    ,toList
+                    ,fromList
+                    ,contiguousStridesFromShape
+                    )
+import qualified Data.NDArray as N
 -- @-node:gcross.20091217190104.1412:<< Import needed modules >>
 -- @nl
 
@@ -85,6 +93,20 @@ main = defaultMain
     ,testProperty "fromList/toList" $
         liftA2 (==) (toList . fromList :: [Int] -> [Int]) id
     -- @-node:gcross.20091218141305.1330:fromList/toList
+    -- @+node:gcross.20091219130644.1364:folding
+    ,testGroup "folding"
+        -- @    @+others
+        -- @+node:gcross.20091219130644.1365:sum
+        [testProperty "sum" $
+            liftA2 (==) (N.sum . fromList) (sum :: [Int] -> Int)
+        -- @-node:gcross.20091219130644.1365:sum
+        -- @+node:gcross.20091219130644.1367:product
+        ,testProperty "product" $
+            liftA2 (==) (N.product . fromList) (product :: [Int] -> Int)
+        -- @-node:gcross.20091219130644.1367:product
+        -- @-others
+        ]
+    -- @-node:gcross.20091219130644.1364:folding
     -- @+node:gcross.20091217190104.1428:cuts
     ,testGroup "cuts"
         -- @    @+others
@@ -498,7 +520,6 @@ main = defaultMain
                  -> let bh = b1 `max` b2
                         bl = b1 `min` b2
                     in (bh-bl) :. () == cutShape (a :. (bl,bh) :. ()) (y :. (x+bh) :. ())
-            -- @nonl
             -- @-node:gcross.20091217190104.1532:a :. (bl,bh) :. ()
             -- @+node:gcross.20091217190104.1533:(bl,bh,bs) :. ()
             ,testProperty "(bl,bh,bs) :. ()" $
@@ -596,6 +617,19 @@ main = defaultMain
                     c = x+y+z
                 in (toList . cut ((a,c,b-a) :. ()) . fromList) [0..c+w] == [a,b..c-1]
             -- @-node:gcross.20091218141305.1343:1D, arbitrary (lo,hi,skip)
+            -- @+node:gcross.20091219130644.1369:1D, sum arbitrary (lo,hi,skip)
+            ,testProperty "1D, sum over arbitrary (lo,hi,skip)" $ mapSize (\n -> if n > 10 then 10 else n) $
+                \
+                (Positive (x :: Int))
+                (Positive (y :: Int))
+                (Positive (z :: Int))
+                (Positive (w :: Int))
+                ->
+                let a = x
+                    b = x+y
+                    c = x+y+z
+                in (N.sum . cut ((a,c,b-a) :. ()) . fromList) [0..c+w] == sum [a,b..c-1]
+            -- @-node:gcross.20091219130644.1369:1D, sum arbitrary (lo,hi,skip)
             -- @-others
             ]
         -- @-node:gcross.20091218141305.1331:cut
