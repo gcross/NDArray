@@ -46,10 +46,10 @@ import System.IO.Unsafe
 class Stridable v where
     contiguousStridesFromShape :: v -> v
 
-instance Num a => Stridable (a :. ()) where
+instance Stridable (Int :. ()) where
    contiguousStridesFromShape _ = 1 :. ()
 
-instance (Num a, Stridable (a :. u)) => Stridable (a :. (a :. u)) where
+instance Stridable (Int :. u) => Stridable (Int :. (Int :. u)) where
     contiguousStridesFromShape (x :. xs@(y :. ys)) =
         let rest_strides@(stride :. _) = contiguousStridesFromShape xs
         in (stride * y) :. rest_strides
@@ -176,21 +176,21 @@ data NDArray indexType dataType =
 -- @+node:gcross.20091217190104.1273:Pointer access
 -- @+node:gcross.20091217190104.1274:withNewNDArray
 withNewNDArray ::
-    (V.Fold indexType Int
+    (Indexable indexType
     ,Stridable indexType
     ,Storable dataType
     )=>
     indexType ->
     (Ptr dataType -> IO a) ->
     IO (NDArray indexType dataType,a)
-withNewNDArray bounds thunk = do
-    foreign_ptr <- mallocForeignPtrArray (V.product bounds)
+withNewNDArray shape thunk = do
+    foreign_ptr <- mallocForeignPtrArray . numberOfElementsFromShape $ shape
     result <- withForeignPtr foreign_ptr thunk
     return $
         (NDArray
             {   ndarrayBaseOffset = 0
-            ,   ndarrayShape = bounds
-            ,   ndarrayStrides = contiguousStridesFromShape bounds
+            ,   ndarrayShape = shape
+            ,   ndarrayStrides = contiguousStridesFromShape shape
             ,   ndarrayContiguous = True
             ,   ndarrayData = foreign_ptr
             }
@@ -222,12 +222,25 @@ cut cut_ =
 -- @-node:gcross.20091217190104.1536:cut
 -- @+node:gcross.20091217190104.1541:fromList/toList
 -- @+node:gcross.20091217190104.1537:fromList
-fromList :: Storable a => [a] -> NDArray (Int :. ()) a
-fromList list = fst . unsafePerformIO . withNewNDArray ((length list) :. ()) . go $ list
+fromList ::
+    (Storable dataType) =>
+    [dataType] ->
+    NDArray (Int :. ()) dataType
+fromList list = fromListWithShape (length list :. ()) list
+-- @-node:gcross.20091217190104.1537:fromList
+-- @+node:gcross.20091220115426.1652:fromListWithShape
+fromListWithShape ::
+    (Indexable indexType, Stridable indexType, Storable dataType) =>
+    indexType ->
+    [dataType] ->
+    NDArray indexType dataType
+fromListWithShape shape list =
+    assert (numberOfElementsFromShape shape == length list) $
+        fst . unsafePerformIO . withNewNDArray shape . go $ list
   where
     go [] _ = return ()
     go (x:xs) ptr = poke ptr x >> go xs (ptr `advancePtr` 1)
--- @-node:gcross.20091217190104.1537:fromList
+-- @-node:gcross.20091220115426.1652:fromListWithShape
 -- @+node:gcross.20091218165002.1494:toList
 toList ::
     (Indexable indexType, Storable dataType) =>
