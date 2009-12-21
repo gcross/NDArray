@@ -677,15 +677,15 @@ main = defaultMain
                     ,7,8,9
                     ]
             -- @-node:gcross.20091220115426.1655:2D, 3x3, (1,3,2) :. (1,3,2) :. ()
-            -- @+node:gcross.20091220115426.1657:2D, 3x3, (0,3,2) :. (1,3,2) :. ()
-            ,testCase "2D, 3x3, (0,3,2) :. (1,3,2) :. ()" $
+            -- @+node:gcross.20091220115426.1657:2D, 3x3, 1 :. () :. ()
+            ,testCase "2D, 3x3, 1 :. () :. ()" $
                 assertEqual
                     "Is the extracted list correct?"
-                    [2,8::Int]
+                    [4,5,6::Int]
                     .
                     toList
                     .
-                    cut ((0,3,2) :. (1,3,2) :. () :: Vec2 (Int,Int,Int))
+                    cut ((1::Int) :. () :. ())
                     .
                     fromListWithShape (3 :. 3 :. () :: Vec2 Int)
                     $
@@ -693,7 +693,24 @@ main = defaultMain
                     ,4,5,6
                     ,7,8,9
                     ]
-            -- @-node:gcross.20091220115426.1657:2D, 3x3, (0,3,2) :. (1,3,2) :. ()
+            -- @-node:gcross.20091220115426.1657:2D, 3x3, 1 :. () :. ()
+            -- @+node:gcross.20091220115426.1768:2D, 3x3, () :. 1 :. ()
+            ,testCase "2D, 3x3, () :. 1 :. ()" $
+                assertEqual
+                    "Is the extracted list correct?"
+                    [2,5,8::Int]
+                    .
+                    toList
+                    .
+                    cut (() :. (1::Int) :. ())
+                    .
+                    fromListWithShape (3 :. 3 :. () :: Vec2 Int)
+                    $
+                    [1,2,3
+                    ,4,5,6
+                    ,7,8,9
+                    ]
+            -- @-node:gcross.20091220115426.1768:2D, 3x3, () :. 1 :. ()
             -- @-others
             ]
         -- @-node:gcross.20091218141305.1331:cut
