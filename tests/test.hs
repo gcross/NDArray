@@ -40,6 +40,13 @@ import qualified Data.NDArray as N
 -- @nl
 
 -- @+others
+-- @+node:gcross.20091224104908.1441:Generators
+-- @+node:gcross.20091224104908.1442:UnderTenInt
+newtype UnderTenInt = UTI Int deriving (Show,Eq)
+instance Arbitrary UnderTenInt where
+    arbitrary = choose (1,10) >>= return.UTI
+-- @-node:gcross.20091224104908.1442:UnderTenInt
+-- @-node:gcross.20091224104908.1441:Generators
 -- @+node:gcross.20091217190104.2175:Functions
 -- @+node:gcross.20091217190104.2176:echo
 echo x = trace (show x) x
@@ -711,6 +718,98 @@ main = defaultMain
                     ,7,8,9
                     ]
             -- @-node:gcross.20091220115426.1768:2D, 3x3, () :. 1 :. ()
+            -- @+node:gcross.20091224104908.1433:3D, 3x3x3, () :. () :. 0 :. ()
+            ,testCase "3D, 3x3x3, () :. () :. 0 :. ()" $
+                assertEqual
+                    "Is the extracted list correct?"
+                    [1,4,7
+                    ,9,6,3
+                    ,1,2,3::Int
+                    ]
+                    .
+                    toList
+                    .
+                    cut (() :. () :. (0::Int) :. ())
+                    .
+                    fromListWithShape (3 :. 3 :. 3 :. () :: Vec3 Int)
+                    $
+                    [1,2,3
+                    ,4,5,6
+                    ,7,8,9
+
+                    ,9,8,7
+                    ,6,5,4
+                    ,3,2,1
+
+                    ,1,5,9
+                    ,2,6,7
+                    ,3,4,8
+                    ]
+            -- @-node:gcross.20091224104908.1433:3D, 3x3x3, () :. () :. 0 :. ()
+            -- @+node:gcross.20091224104908.1437:3D, 3x3x3, () :. () :. 1 :. ()
+            ,testCase "3D, 3x3x3, () :. () :. 1 :. ()" $
+                assertEqual
+                    "Is the extracted list correct?"
+                    [2,5,8
+                    ,8,5,2
+                    ,5,6,4::Int
+                    ]
+                    .
+                    toList
+                    .
+                    cut (() :. () :. (1::Int) :. ())
+                    .
+                    fromListWithShape (3 :. 3 :. 3 :. () :: Vec3 Int)
+                    $
+                    [1,2,3
+                    ,4,5,6
+                    ,7,8,9
+
+                    ,9,8,7
+                    ,6,5,4
+                    ,3,2,1
+
+                    ,1,5,9
+                    ,2,6,7
+                    ,3,4,8
+                    ]
+            -- @-node:gcross.20091224104908.1437:3D, 3x3x3, () :. () :. 1 :. ()
+            -- @+node:gcross.20091224104908.1435:3D, 3x3x3, () :. () :. 2 :. ()
+            ,testCase "3D, 3x3x3, () :. () :. 2 :. ()" $
+                assertEqual
+                    "Is the extracted list correct?"
+                    [3,6,9
+                    ,7,4,1
+                    ,9,7,8::Int
+                    ]
+                    .
+                    toList
+                    .
+                    cut (() :. () :. (2::Int) :. ())
+                    .
+                    fromListWithShape (3 :. 3 :. 3 :. () :: Vec3 Int)
+                    $
+                    [1,2,3
+                    ,4,5,6
+                    ,7,8,9
+
+                    ,9,8,7
+                    ,6,5,4
+                    ,3,2,1
+
+                    ,1,5,9
+                    ,2,6,7
+                    ,3,4,8
+                    ]
+            -- @-node:gcross.20091224104908.1435:3D, 3x3x3, () :. () :. 2 :. ()
+            -- @+node:gcross.20091224104908.1445:3D, MxNxO, () :. () :. i :. ()
+            ,testProperty "3D, MxNxO () :. () :. i :. ()" $ \(UTI m) (UTI n) (UTI o) ->
+                choose (0,o-1) >>= \i ->
+                vectorOf (m*n*o) (arbitrary :: Gen Int) >>=
+                    return . liftA2 (==)
+                        (skipList o . drop i)
+                        (N.toList . cut (() :. () :. (i::Int) :. ()) . N.fromListWithShape (m :. n :. o :. () :: Vec3 Int))
+            -- @-node:gcross.20091224104908.1445:3D, MxNxO, () :. () :. i :. ()
             -- @-others
             ]
         -- @-node:gcross.20091218141305.1331:cut
