@@ -7,10 +7,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UndecidableInstances #-}
 -- @-node:gcross.20091217190104.1420:<< Language extensions >>
 -- @nl
 
@@ -43,25 +42,29 @@ import System.IO.Unsafe
 -- @+others
 -- @+node:gcross.20091217190104.1266:Classes
 -- @+node:gcross.20091217190104.1459:Cut
-class Cut c v vv | c v -> vv where
+class Cut c v where
+    type CutResult c v
     cutOffset :: c -> v -> Int
     cutPreservesContiguity :: c -> v -> Bool
-    cutStrides :: c -> v -> vv
-    cutShape :: c -> v -> vv
+    cutStrides :: c -> v -> CutResult c v
+    cutShape :: c -> v -> CutResult c v
 
-instance Cut () () () where
+instance Cut () () where
+    type CutResult () () = ()
     cutOffset () _ = 0
     cutPreservesContiguity () _ = True
     cutStrides () = id
     cutShape () = id
 
-instance Cut c v vv => Cut (() :. c) (Int :. v) (Int :. vv) where
+instance Cut c v => Cut (() :. c) (Int :. v) where
+    type CutResult (() :. c) (Int :. v) = Int :. (CutResult c v)
     cutOffset (() :. cs) (_ :. vs) = cutOffset cs vs
     cutPreservesContiguity (() :. cs) (_ :. vs) = cutPreservesContiguity cs vs
     cutStrides (() :. cs) (stride :. vs) = stride :. cutStrides cs vs
     cutShape (() :. cs) (bound :. vs) = bound :. cutShape cs vs
 
-instance Cut c v vv => Cut (Int :. c) (Int :. v) vv where
+instance Cut c v => Cut (Int :. c) (Int :. v) where
+    type CutResult (Int :. c) (Int :. v) = CutResult c v
     cutOffset (index :. cs) (stride :. vs) = (index*stride) + cutOffset cs vs
     cutPreservesContiguity _ _ = False
     cutStrides (_ :. cs) (_ :. vs) = cutStrides cs vs
@@ -69,7 +72,8 @@ instance Cut c v vv => Cut (Int :. c) (Int :. v) vv where
         assert (index >= 0 || index < bound) $
             cutShape cs vs
 
-instance Cut c v vv => Cut ((Int,Int) :. c) (Int :. v) (Int :. vv) where
+instance Cut c v => Cut ((Int,Int) :. c) (Int :. v) where
+    type CutResult ((Int,Int) :. c) (Int :. v) = Int :. (CutResult c v)
     cutOffset ((lo,_) :. cs) (stride :. vs) = (lo*stride) + cutOffset cs vs
     cutPreservesContiguity ((lo,hi) :. cs) (bound :. vs) =
         (lo == 0) && (hi == bound) && cutPreservesContiguity cs vs
@@ -78,7 +82,8 @@ instance Cut c v vv => Cut ((Int,Int) :. c) (Int :. v) (Int :. vv) where
         assert (lo >= 0 || hi < bound) $
             (hi-lo) :. cutShape cs vs
 
-instance Cut c v vv => Cut ((Int,Int,Int) :. c) (Int :. v) (Int :. vv) where
+instance Cut c v => Cut ((Int,Int,Int) :. c) (Int :. v) where
+    type CutResult ((Int,Int,Int) :. c) (Int :. v) = Int :. (CutResult c v)
     cutOffset ((lo,_,_) :. cs) (stride :. vs) = (lo*stride) + cutOffset cs vs
     cutPreservesContiguity ((lo,hi,skip) :. cs) (bound :. vs) =
         (lo == 0) && (hi == bound) && (skip == 1) && cutPreservesContiguity cs vs
@@ -190,10 +195,10 @@ withNDArray ndarray thunk =
 -- @-node:gcross.20091217190104.1273:Pointer access
 -- @+node:gcross.20091217190104.1536:cut
 cut ::
-    (Cut cut oldIndexType newIndexType) =>
+    (Cut cut oldIndexType) =>
     cut ->
     NDArray oldIndexType dataType ->
-    NDArray newIndexType dataType
+    NDArray (CutResult cut oldIndexType) dataType
 cut cut_ =
     NDArray
         <$> (cutOffset cut_ . ndarrayStrides <^(+)^> ndarrayBaseOffset)
