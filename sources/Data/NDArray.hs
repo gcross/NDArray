@@ -42,18 +42,6 @@ import System.IO.Unsafe
 
 -- @+others
 -- @+node:gcross.20091217190104.1266:Classes
--- @+node:gcross.20091217190104.1267:Stridable
-class Stridable v where
-    contiguousStridesFromShape :: v -> v
-
-instance Stridable (Int :. ()) where
-   contiguousStridesFromShape _ = 1 :. ()
-
-instance Stridable (Int :. u) => Stridable (Int :. (Int :. u)) where
-    contiguousStridesFromShape (x :. xs@(y :. ys)) =
-        let rest_strides@(stride :. _) = contiguousStridesFromShape xs
-        in (stride * y) :. rest_strides
--- @-node:gcross.20091217190104.1267:Stridable
 -- @+node:gcross.20091217190104.1459:Cut
 class Cut c v vv | c v -> vv where
     cutOffset :: c -> v -> Int
@@ -112,12 +100,16 @@ class Indexable indexType where
     lastOffset :: indexType -> indexType -> Int
     reversedStrides :: indexType -> indexType
     numberOfElementsFromShape :: indexType -> Int
+    contiguousStridesFromShape :: indexType -> indexType
+    _computeNextStride :: indexType -> indexType -> Int
 
 instance Indexable () where
     walk _ _ thunk = thunk
     lastOffset _ _ = 0
     reversedStrides = id
     numberOfElementsFromShape _ = 1
+    contiguousStridesFromShape _ = ()
+    _computeNextStride _ _ = 1
 
 instance Indexable a => Indexable (Int :. a) where
     walk
@@ -138,6 +130,10 @@ instance Indexable a => Indexable (Int :. a) where
     reversedStrides (stride :. rest_strides) = (-stride) :. reversedStrides rest_strides
 
     numberOfElementsFromShape (shape :. rest_shape) = shape * numberOfElementsFromShape rest_shape
+    contiguousStridesFromShape (x :. rest_shape) =
+        let rest_strides = contiguousStridesFromShape rest_shape
+        in _computeNextStride rest_shape rest_strides :. rest_strides
+    _computeNextStride (shape :. _) (stride :. _) = shape*stride
 -- @-node:gcross.20091218165002.1490:Indexable
 -- @-node:gcross.20091217190104.1266:Classes
 -- @+node:gcross.20091219130644.1371:Exceptions
@@ -164,7 +160,6 @@ data NDArray indexType dataType =
 -- @+node:gcross.20091217190104.1274:withNewNDArray
 withNewNDArray ::
     (Indexable indexType
-    ,Stridable indexType
     ,Storable dataType
     )=>
     indexType ->
@@ -217,7 +212,7 @@ fromList list = fromListWithShape (length list :. ()) list
 -- @-node:gcross.20091217190104.1537:fromList
 -- @+node:gcross.20091220115426.1652:fromListWithShape
 fromListWithShape ::
-    (Indexable indexType, Stridable indexType, Storable dataType) =>
+    (Indexable indexType, Storable dataType) =>
     indexType ->
     [dataType] ->
     NDArray indexType dataType
