@@ -54,64 +54,51 @@ instance Stridable (Int :. u) => Stridable (Int :. (Int :. u)) where
         let rest_strides@(stride :. _) = contiguousStridesFromShape xs
         in (stride * y) :. rest_strides
 -- @-node:gcross.20091217190104.1267:Stridable
--- @+node:gcross.20091217190104.1427:CutOffset
-class CutOffset c v where
+-- @+node:gcross.20091217190104.1459:Cut
+class Cut c v vv | c v -> vv where
     cutOffset :: c -> v -> Int
     cutPreservesContiguity :: c -> v -> Bool
-
-instance CutOffset () () where
-    cutOffset () _ = 0
-    cutPreservesContiguity () _ = True
-
-instance CutOffset c v => CutOffset (() :. c) (Int :. v) where
-    cutOffset (() :. cs) (_ :. vs) = cutOffset cs vs
-    cutPreservesContiguity (() :. cs) (_ :. vs) = cutPreservesContiguity cs vs
-
-instance CutOffset c v => CutOffset (Int :. c) (Int :. v) where
-    cutOffset (index :. cs) (stride :. vs) = (index*stride) + cutOffset cs vs
-    cutPreservesContiguity _ _ = False
-
-instance CutOffset c v => CutOffset ((Int,Int) :. c) (Int :. v) where
-    cutOffset ((lo,_) :. cs) (stride :. vs) = (lo*stride) + cutOffset cs vs
-    cutPreservesContiguity ((lo,hi) :. cs) (bound :. vs) =
-        (lo == 0) && (hi == bound) && cutPreservesContiguity cs vs
-
-instance CutOffset c v => CutOffset ((Int,Int,Int) :. c) (Int :. v) where
-    cutOffset ((lo,_,_) :. cs) (stride :. vs) = (lo*stride) + cutOffset cs vs
-    cutPreservesContiguity ((lo,hi,skip) :. cs) (bound :. vs) =
-        (lo == 0) && (hi == bound) && (skip == 1) && cutPreservesContiguity cs vs
--- @-node:gcross.20091217190104.1427:CutOffset
--- @+node:gcross.20091217190104.1459:CutStrides
-class CutStrides c v vv | c v -> vv where
     cutStrides :: c -> v -> vv
     cutShape :: c -> v -> vv
 
-instance CutStrides () () () where
+instance Cut () () () where
+    cutOffset () _ = 0
+    cutPreservesContiguity () _ = True
     cutStrides () = id
     cutShape () = id
 
-instance CutStrides c v vv => CutStrides (() :. c) (Int :. v) (Int :. vv) where
+instance Cut c v vv => Cut (() :. c) (Int :. v) (Int :. vv) where
+    cutOffset (() :. cs) (_ :. vs) = cutOffset cs vs
+    cutPreservesContiguity (() :. cs) (_ :. vs) = cutPreservesContiguity cs vs
     cutStrides (() :. cs) (stride :. vs) = stride :. cutStrides cs vs
     cutShape (() :. cs) (bound :. vs) = bound :. cutShape cs vs
 
-instance CutStrides c v vv => CutStrides (Int :. c) (Int :. v) vv where
+instance Cut c v vv => Cut (Int :. c) (Int :. v) vv where
+    cutOffset (index :. cs) (stride :. vs) = (index*stride) + cutOffset cs vs
+    cutPreservesContiguity _ _ = False
     cutStrides (_ :. cs) (_ :. vs) = cutStrides cs vs
     cutShape (index :. cs) (bound :. vs) =
         assert (index >= 0 || index < bound) $
             cutShape cs vs
 
-instance CutStrides c v vv => CutStrides ((Int,Int) :. c) (Int :. v) (Int :. vv) where
+instance Cut c v vv => Cut ((Int,Int) :. c) (Int :. v) (Int :. vv) where
+    cutOffset ((lo,_) :. cs) (stride :. vs) = (lo*stride) + cutOffset cs vs
+    cutPreservesContiguity ((lo,hi) :. cs) (bound :. vs) =
+        (lo == 0) && (hi == bound) && cutPreservesContiguity cs vs
     cutStrides (_ :. cs) (stride :. vs) = stride :. cutStrides cs vs
     cutShape ((lo,hi) :. cs) (bound :. vs) =
         assert (lo >= 0 || hi < bound) $
             (hi-lo) :. cutShape cs vs
 
-instance CutStrides c v vv => CutStrides ((Int,Int,Int) :. c) (Int :. v) (Int :. vv) where
+instance Cut c v vv => Cut ((Int,Int,Int) :. c) (Int :. v) (Int :. vv) where
+    cutOffset ((lo,_,_) :. cs) (stride :. vs) = (lo*stride) + cutOffset cs vs
+    cutPreservesContiguity ((lo,hi,skip) :. cs) (bound :. vs) =
+        (lo == 0) && (hi == bound) && (skip == 1) && cutPreservesContiguity cs vs
     cutStrides ((_,_,skip) :. cs) (stride :. vs) = (skip*stride) :. cutStrides cs vs
     cutShape ((lo,hi,skip) :. cs) (bound :. vs) =
         assert (lo >= 0 || hi < bound) $
             ((hi-lo-1) `div` skip + 1)  :. cutShape cs vs
--- @-node:gcross.20091217190104.1459:CutStrides
+-- @-node:gcross.20091217190104.1459:Cut
 -- @+node:gcross.20091218165002.1490:Indexable
 class Indexable indexType where
     walk ::
@@ -208,7 +195,7 @@ withNDArray ndarray thunk =
 -- @-node:gcross.20091217190104.1273:Pointer access
 -- @+node:gcross.20091217190104.1536:cut
 cut ::
-    (CutOffset cut oldIndexType, CutStrides cut oldIndexType newIndexType) =>
+    (Cut cut oldIndexType newIndexType) =>
     cut ->
     NDArray oldIndexType dataType ->
     NDArray newIndexType dataType
