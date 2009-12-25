@@ -182,6 +182,17 @@ data NDArray indexType dataType =
         ,   ndarrayData :: ForeignPtr dataType
         }
 -- @-node:gcross.20091217190104.1269:NDArray
+-- @+node:gcross.20091224104908.1570:_NDArray
+type Array1D = NDArray (Int :. ())
+type Array2D = NDArray (Vec2 Int)
+type Array3D = NDArray (Vec3 Int)
+type Array4D = NDArray (Vec4 Int)
+type Array5D = NDArray (Vec5 Int)
+type Array6D = NDArray (Vec6 Int)
+type Array7D = NDArray (Vec7 Int)
+type Array8D = NDArray (Vec8 Int)
+type Array9D = NDArray (Vec9 Int)
+-- @-node:gcross.20091224104908.1570:_NDArray
 -- @-node:gcross.20091217190104.1268:Types
 -- @+node:gcross.20091217190104.1270:Functions
 -- @+node:gcross.20091217190104.1273:Pointer access
