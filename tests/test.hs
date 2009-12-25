@@ -5,6 +5,7 @@
 -- @<< Language extensions >>
 -- @+node:gcross.20091217190104.1411:<< Language extensions >>
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE Rank2Types #-}
 -- @-node:gcross.20091217190104.1411:<< Language extensions >>
 -- @nl
 
@@ -17,6 +18,8 @@ import qualified Data.Vec as V
 import Data.Vec((:.)(..))
 
 import Debug.Trace
+
+import Foreign.Storable
 
 import Test.HUnit
 import Test.Framework
@@ -518,234 +521,239 @@ main = defaultMain
             ]
         -- @-node:gcross.20091224210553.1623:cutShape
         -- @+node:gcross.20091225065853.1574:cut
-        ,testGroup "cut"
-            -- @    @+others
-            -- @+node:gcross.20091225065853.1575:1D, null cut
-            [testProperty "1D, null cut" $
-                liftA2 (==)
-                    (toList . cut (All :. ()) . fromList)
-                    (id :: [Int] -> [Int])
-            -- @-node:gcross.20091225065853.1575:1D, null cut
-            -- @+node:gcross.20091225065853.1576:1D, skip 1
-            ,testProperty "1D, skip 1" $
-                \(lst :: [Int]) ->
-                    liftA2 (==)
-                        (toList . cut (StridedRange 0 (length lst) 1 :. ()) . fromList)
-                        (id :: [Int] -> [Int])
-                    lst
-            -- @-node:gcross.20091225065853.1576:1D, skip 1
-            -- @+node:gcross.20091225065853.1577:1D, skip 2
-            ,testProperty "1D, skip 2" $
-                \(lst :: [Int]) ->
-                    liftA2 (==)
-                        (toList . cut (StridedRange 0 (length lst) 2 :. ()) . fromList)
-                        (skipList 2)
-                    lst
-            -- @-node:gcross.20091225065853.1577:1D, skip 2
-            -- @+node:gcross.20091225065853.1578:1D, skip 3
-            ,testProperty "1D, skip 3" $
-                \(lst :: [Int]) ->
-                    liftA2 (==)
-                        (toList . cut (StridedRange 0 (length lst) 3 :. ()) . fromList)
-                        (skipList 3)
-                    lst
-            -- @-node:gcross.20091225065853.1578:1D, skip 3
-            -- @+node:gcross.20091225065853.1579:1D, skip N
-            ,testProperty "1D, skip N" $
-                \(lst :: [Int]) (Positive n) ->
-                    liftA2 (==)
-                        (toList . cut (StridedRange 0 (length lst) n :. ()) . fromList)
-                        (skipList n)
-                    lst
-            -- @-node:gcross.20091225065853.1579:1D, skip N
-            -- @+node:gcross.20091225065853.1580:1D, arbitrary (lo,hi,skip)
-            ,testProperty "1D, arbitrary (lo,hi,skip)" $ mapSize (\n -> if n > 10 then 10 else n) $
-                \
-                (Positive x)
-                (Positive y)
-                (Positive z)
-                (Positive w)
-                ->
-                let a = x
-                    b = x+y
-                    c = x+y+z
-                in (toList . cut (StridedRange a c (b-a) :. ()) . fromList) [0..c+w] == [a,b..c-1]
-            -- @-node:gcross.20091225065853.1580:1D, arbitrary (lo,hi,skip)
-            -- @+node:gcross.20091225065853.1581:1D, sum arbitrary (lo,hi,skip)
-            ,testProperty "1D, sum over arbitrary (lo,hi,skip)" $ mapSize (\n -> if n > 10 then 10 else n) $
-                \
-                (Positive x)
-                (Positive y)
-                (Positive z)
-                (Positive w)
-                ->
-                let a = x
-                    b = x+y
-                    c = x+y+z
-                in (N.sum . cut (StridedRange a c (b-a) :. ()) . fromList) [0..c+w] == sum [a,b..c-1]
-            -- @-node:gcross.20091225065853.1581:1D, sum arbitrary (lo,hi,skip)
-            -- @+node:gcross.20091225065853.1582:2D, 3x3, skip 2
-            ,testCase "2D, 3x3, skip 2" $
-                assertEqual
-                    "Is the extracted list correct?"
-                    [1,3,7,9::Int]
-                    .
-                    toList
-                    .
-                    cut (StridedRange 0 3 2 :. StridedRange 0 3 2 :. ())
-                    .
-                    fromListWithShape (shape2 3 3)
-                    $
-                    [1,2,3
-                    ,4,5,6
-                    ,7,8,9
-                    ]
-            -- @-node:gcross.20091225065853.1582:2D, 3x3, skip 2
-            -- @+node:gcross.20091225065853.1583:2D, 3x3, StridedRange 1 3 2 :. StridedRange 1 3 2 :. ()
-            ,testCase "2D, 3x3, StridedRange 1 3 2 :. StridedRange 1 3 2 :. ()" $
-                assertEqual
-                    "Is the extracted list correct?"
-                    [5::Int]
-                    .
-                    toList
-                    .
-                    cut (StridedRange 1 3 2 :. StridedRange 1 3 2 :. ())
-                    .
-                    fromListWithShape (shape2 3 3)
-                    $
-                    [1,2,3
-                    ,4,5,6
-                    ,7,8,9
-                    ]
-            -- @-node:gcross.20091225065853.1583:2D, 3x3, StridedRange 1 3 2 :. StridedRange 1 3 2 :. ()
-            -- @+node:gcross.20091225065853.1584:2D, 3x3, Index 1 :. All :. ()
-            ,testCase "2D, 3x3, Index 1 :. All :. ()" $
-                assertEqual
-                    "Is the extracted list correct?"
-                    [4,5,6::Int]
-                    .
-                    toList
-                    .
-                    cut (Index 1 :. All :. ())
-                    .
-                    fromListWithShape (shape2 3 3)
-                    $
-                    [1,2,3
-                    ,4,5,6
-                    ,7,8,9
-                    ]
-            -- @-node:gcross.20091225065853.1584:2D, 3x3, Index 1 :. All :. ()
-            -- @+node:gcross.20091225065853.1585:2D, 3x3, All :. Index 1 :. ()
-            ,testCase "2D, 3x3, All :. Index 1 :. ()" $
-                assertEqual
-                    "Is the extracted list correct?"
-                    [2,5,8::Int]
-                    .
-                    toList
-                    .
-                    cut (All :. Index 1 :. ())
-                    .
-                    fromListWithShape (shape2 3 3)
-                    $
-                    [1,2,3
-                    ,4,5,6
-                    ,7,8,9
-                    ]
-            -- @-node:gcross.20091225065853.1585:2D, 3x3, All :. Index 1 :. ()
-            -- @+node:gcross.20091225065853.1586:3D, 3x3x3, All :. All:. Index 0 :. ()
-            ,testCase "3D, 3x3x3, All :. All:. Index 0 :. ()" $
-                assertEqual
-                    "Is the extracted list correct?"
-                    [1,4,7
-                    ,9,6,3
-                    ,1,2,3::Int
-                    ]
-                    .
-                    toList
-                    .
-                    cut (All :. All :. Index 0 :. ())
-                    .
-                    fromListWithShape (shape3 3 3 3)
-                    $
-                    [1,2,3
-                    ,4,5,6
-                    ,7,8,9
+        ,testGroup "cut" $
+            let makeCutTests :: (forall indexType . forall dataType . (N.Indexable indexType, Storable dataType) => N.NDArray indexType dataType -> [dataType]) -> [Test.Framework.Test]
+                makeCutTests toList =
+                    -- @            @+others
+                    -- @+node:gcross.20091225065853.1575:1D, null cut
+                    [testProperty "1D, null cut" $
+                        liftA2 (==)
+                            (toList . cut (All :. ()) . fromList)
+                            (id :: [Int] -> [Int])
+                    -- @-node:gcross.20091225065853.1575:1D, null cut
+                    -- @+node:gcross.20091225065853.1576:1D, skip 1
+                    ,testProperty "1D, skip 1" $
+                        \(lst :: [Int]) ->
+                            liftA2 (==)
+                                (toList . cut (StridedRange 0 (length lst) 1 :. ()) . fromList)
+                                (id :: [Int] -> [Int])
+                            lst
+                    -- @-node:gcross.20091225065853.1576:1D, skip 1
+                    -- @+node:gcross.20091225065853.1577:1D, skip 2
+                    ,testProperty "1D, skip 2" $
+                        \(lst :: [Int]) ->
+                            liftA2 (==)
+                                (toList . cut (StridedRange 0 (length lst) 2 :. ()) . fromList)
+                                (skipList 2)
+                            lst
+                    -- @-node:gcross.20091225065853.1577:1D, skip 2
+                    -- @+node:gcross.20091225065853.1578:1D, skip 3
+                    ,testProperty "1D, skip 3" $
+                        \(lst :: [Int]) ->
+                            liftA2 (==)
+                                (toList . cut (StridedRange 0 (length lst) 3 :. ()) . fromList)
+                                (skipList 3)
+                            lst
+                    -- @-node:gcross.20091225065853.1578:1D, skip 3
+                    -- @+node:gcross.20091225065853.1579:1D, skip N
+                    ,testProperty "1D, skip N" $
+                        \(lst :: [Int]) (Positive n) ->
+                            liftA2 (==)
+                                (toList . cut (StridedRange 0 (length lst) n :. ()) . fromList)
+                                (skipList n)
+                            lst
+                    -- @-node:gcross.20091225065853.1579:1D, skip N
+                    -- @+node:gcross.20091225065853.1580:1D, arbitrary (lo,hi,skip)
+                    ,testProperty "1D, arbitrary (lo,hi,skip)" $ mapSize (\n -> if n > 10 then 10 else n) $
+                        \
+                        (Positive x)
+                        (Positive y)
+                        (Positive z)
+                        (Positive w)
+                        ->
+                        let a = x
+                            b = x+y
+                            c = x+y+z
+                        in (toList . cut (StridedRange a c (b-a) :. ()) . fromList) [0..c+w] == [a,b..c-1]
+                    -- @-node:gcross.20091225065853.1580:1D, arbitrary (lo,hi,skip)
+                    -- @+node:gcross.20091225065853.1581:1D, sum arbitrary (lo,hi,skip)
+                    ,testProperty "1D, sum over arbitrary (lo,hi,skip)" $ mapSize (\n -> if n > 10 then 10 else n) $
+                        \
+                        (Positive x)
+                        (Positive y)
+                        (Positive z)
+                        (Positive w)
+                        ->
+                        let a = x
+                            b = x+y
+                            c = x+y+z
+                        in (N.sum . cut (StridedRange a c (b-a) :. ()) . fromList) [0..c+w] == sum [a,b..c-1]
+                    -- @-node:gcross.20091225065853.1581:1D, sum arbitrary (lo,hi,skip)
+                    -- @+node:gcross.20091225065853.1582:2D, 3x3, skip 2
+                    ,testCase "2D, 3x3, skip 2" $
+                        assertEqual
+                            "Is the extracted list correct?"
+                            [1,3,7,9::Int]
+                            .
+                            toList
+                            .
+                            cut (StridedRange 0 3 2 :. StridedRange 0 3 2 :. ())
+                            .
+                            fromListWithShape (shape2 3 3)
+                            $
+                            [1,2,3
+                            ,4,5,6
+                            ,7,8,9
+                            ]
+                    -- @-node:gcross.20091225065853.1582:2D, 3x3, skip 2
+                    -- @+node:gcross.20091225065853.1583:2D, 3x3, StridedRange 1 3 2 :. StridedRange 1 3 2 :. ()
+                    ,testCase "2D, 3x3, StridedRange 1 3 2 :. StridedRange 1 3 2 :. ()" $
+                        assertEqual
+                            "Is the extracted list correct?"
+                            [5::Int]
+                            .
+                            toList
+                            .
+                            cut (StridedRange 1 3 2 :. StridedRange 1 3 2 :. ())
+                            .
+                            fromListWithShape (shape2 3 3)
+                            $
+                            [1,2,3
+                            ,4,5,6
+                            ,7,8,9
+                            ]
+                    -- @-node:gcross.20091225065853.1583:2D, 3x3, StridedRange 1 3 2 :. StridedRange 1 3 2 :. ()
+                    -- @+node:gcross.20091225065853.1584:2D, 3x3, Index 1 :. All :. ()
+                    ,testCase "2D, 3x3, Index 1 :. All :. ()" $
+                        assertEqual
+                            "Is the extracted list correct?"
+                            [4,5,6::Int]
+                            .
+                            toList
+                            .
+                            cut (Index 1 :. All :. ())
+                            .
+                            fromListWithShape (shape2 3 3)
+                            $
+                            [1,2,3
+                            ,4,5,6
+                            ,7,8,9
+                            ]
+                    -- @-node:gcross.20091225065853.1584:2D, 3x3, Index 1 :. All :. ()
+                    -- @+node:gcross.20091225065853.1585:2D, 3x3, All :. Index 1 :. ()
+                    ,testCase "2D, 3x3, All :. Index 1 :. ()" $
+                        assertEqual
+                            "Is the extracted list correct?"
+                            [2,5,8::Int]
+                            .
+                            toList
+                            .
+                            cut (All :. Index 1 :. ())
+                            .
+                            fromListWithShape (shape2 3 3)
+                            $
+                            [1,2,3
+                            ,4,5,6
+                            ,7,8,9
+                            ]
+                    -- @-node:gcross.20091225065853.1585:2D, 3x3, All :. Index 1 :. ()
+                    -- @+node:gcross.20091225065853.1586:3D, 3x3x3, All :. All:. Index 0 :. ()
+                    ,testCase "3D, 3x3x3, All :. All:. Index 0 :. ()" $
+                        assertEqual
+                            "Is the extracted list correct?"
+                            [1,4,7
+                            ,9,6,3
+                            ,1,2,3::Int
+                            ]
+                            .
+                            toList
+                            .
+                            cut (All :. All :. Index 0 :. ())
+                            .
+                            fromListWithShape (shape3 3 3 3)
+                            $
+                            [1,2,3
+                            ,4,5,6
+                            ,7,8,9
 
-                    ,9,8,7
-                    ,6,5,4
-                    ,3,2,1
+                            ,9,8,7
+                            ,6,5,4
+                            ,3,2,1
 
-                    ,1,5,9
-                    ,2,6,7
-                    ,3,4,8
-                    ]
-            -- @-node:gcross.20091225065853.1586:3D, 3x3x3, All :. All:. Index 0 :. ()
-            -- @+node:gcross.20091225065853.1587:3D, 3x3x3, All :. All:. Index 1 :. ()
-            ,testCase "3D, 3x3x3, All :. All:. Index 1 :. ()" $
-                assertEqual
-                    "Is the extracted list correct?"
-                    [2,5,8
-                    ,8,5,2
-                    ,5,6,4::Int
-                    ]
-                    .
-                    toList
-                    .
-                    cut (All :. All :. Index 1 :. ())
-                    .
-                    fromListWithShape (shape3 3 3 3)
-                    $
-                    [1,2,3
-                    ,4,5,6
-                    ,7,8,9
+                            ,1,5,9
+                            ,2,6,7
+                            ,3,4,8
+                            ]
+                    -- @-node:gcross.20091225065853.1586:3D, 3x3x3, All :. All:. Index 0 :. ()
+                    -- @+node:gcross.20091225065853.1587:3D, 3x3x3, All :. All:. Index 1 :. ()
+                    ,testCase "3D, 3x3x3, All :. All:. Index 1 :. ()" $
+                        assertEqual
+                            "Is the extracted list correct?"
+                            [2,5,8
+                            ,8,5,2
+                            ,5,6,4::Int
+                            ]
+                            .
+                            toList
+                            .
+                            cut (All :. All :. Index 1 :. ())
+                            .
+                            fromListWithShape (shape3 3 3 3)
+                            $
+                            [1,2,3
+                            ,4,5,6
+                            ,7,8,9
 
-                    ,9,8,7
-                    ,6,5,4
-                    ,3,2,1
+                            ,9,8,7
+                            ,6,5,4
+                            ,3,2,1
 
-                    ,1,5,9
-                    ,2,6,7
-                    ,3,4,8
-                    ]
-            -- @-node:gcross.20091225065853.1587:3D, 3x3x3, All :. All:. Index 1 :. ()
-            -- @+node:gcross.20091225065853.1588:3D, 3x3x3, All :. All:. Index 2 :. ()
-            ,testCase "3D, 3x3x3, All :. All:. Index 2 :. ()" $
-                assertEqual
-                    "Is the extracted list correct?"
-                    [3,6,9
-                    ,7,4,1
-                    ,9,7,8::Int
-                    ]
-                    .
-                    toList
-                    .
-                    cut (All :. All :. Index 2 :. ())
-                    .
-                    fromListWithShape (shape3 3 3 3)
-                    $
-                    [1,2,3
-                    ,4,5,6
-                    ,7,8,9
+                            ,1,5,9
+                            ,2,6,7
+                            ,3,4,8
+                            ]
+                    -- @-node:gcross.20091225065853.1587:3D, 3x3x3, All :. All:. Index 1 :. ()
+                    -- @+node:gcross.20091225065853.1588:3D, 3x3x3, All :. All:. Index 2 :. ()
+                    ,testCase "3D, 3x3x3, All :. All:. Index 2 :. ()" $
+                        assertEqual
+                            "Is the extracted list correct?"
+                            [3,6,9
+                            ,7,4,1
+                            ,9,7,8::Int
+                            ]
+                            .
+                            toList
+                            .
+                            cut (All :. All :. Index 2 :. ())
+                            .
+                            fromListWithShape (shape3 3 3 3)
+                            $
+                            [1,2,3
+                            ,4,5,6
+                            ,7,8,9
 
-                    ,9,8,7
-                    ,6,5,4
-                    ,3,2,1
+                            ,9,8,7
+                            ,6,5,4
+                            ,3,2,1
 
-                    ,1,5,9
-                    ,2,6,7
-                    ,3,4,8
+                            ,1,5,9
+                            ,2,6,7
+                            ,3,4,8
+                            ]
+                    -- @-node:gcross.20091225065853.1588:3D, 3x3x3, All :. All:. Index 2 :. ()
+                    -- @+node:gcross.20091225065853.1589:3D, MxNxO, All :. All:. Index i :. ()
+                    ,testProperty "3D, MxNxO, All :. All:. Index i :. ()" $ \(UTI m) (UTI n) (UTI o) ->
+                        choose (0,o-1) >>= \i ->
+                        vectorOf (m*n*o) (arbitrary :: Gen Int) >>=
+                            return . liftA2 (==)
+                                (skipList o . drop i)
+                                (N.toList . cut (All :. All :. Index i :. ()) . N.fromListWithShape (shape3 m n o))
+                    -- @-node:gcross.20091225065853.1589:3D, MxNxO, All :. All:. Index i :. ()
+                    -- @-others
                     ]
-            -- @-node:gcross.20091225065853.1588:3D, 3x3x3, All :. All:. Index 2 :. ()
-            -- @+node:gcross.20091225065853.1589:3D, MxNxO, All :. All:. Index i :. ()
-            ,testProperty "3D, MxNxO, All :. All:. Index i :. ()" $ \(UTI m) (UTI n) (UTI o) ->
-                choose (0,o-1) >>= \i ->
-                vectorOf (m*n*o) (arbitrary :: Gen Int) >>=
-                    return . liftA2 (==)
-                        (skipList o . drop i)
-                        (N.toList . cut (All :. All :. Index i :. ()) . N.fromListWithShape (shape3 m n o))
-            -- @-node:gcross.20091225065853.1589:3D, MxNxO, All :. All:. Index i :. ()
-            -- @-others
-            ]
+            in [testGroup "toList" $ makeCutTests toList
+               ,testGroup "reverse . foldl (flip (:)) []" $ makeCutTests (reverse . N.foldl (flip (:)) [])
+               ]
         -- @-node:gcross.20091225065853.1574:cut
         -- @-others
         ]
