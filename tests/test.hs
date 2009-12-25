@@ -14,7 +14,7 @@ import Control.Applicative
 
 import Data.List
 import qualified Data.Vec as V
-import Data.Vec((:.)(..), Vec2, Vec3)
+import Data.Vec((:.)(..))
 
 import Debug.Trace
 
@@ -34,6 +34,20 @@ import Data.NDArray (cut
                     ,fromList
                     ,fromListWithShape
                     ,contiguousStridesFromShape
+                    ,All(..)
+                    ,Index(..)
+                    ,Range(..)
+                    ,StridedRange(..)
+                    ,shape0
+                    ,shape1
+                    ,shape2
+                    ,shape3
+                    ,shape4
+                    ,shape5
+                    ,shape6
+                    ,shape7
+                    ,shape8
+                    ,shape9
                     )
 import qualified Data.NDArray as N
 -- @-node:gcross.20091217190104.1412:<< Import needed modules >>
@@ -97,725 +111,445 @@ main = defaultMain
         -- @-others
         ]
     -- @-node:gcross.20091217190104.1417:contiguousStridesFromShape
-    -- @+node:gcross.20091218141305.1330:fromList/toList
-    ,testProperty "fromList/toList" $
-        liftA2 (==) (toList . fromList :: [Int] -> [Int]) id
-    -- @-node:gcross.20091218141305.1330:fromList/toList
-    -- @+node:gcross.20091219130644.1364:folding
-    ,testGroup "folding"
-        -- @    @+others
-        -- @+node:gcross.20091219130644.1365:sum
-        [testProperty "sum" $
-            liftA2 (==) (N.sum . fromList) (sum :: [Int] -> Int)
-        -- @-node:gcross.20091219130644.1365:sum
-        -- @+node:gcross.20091219130644.1367:product
-        ,testProperty "product" $
-            liftA2 (==) (N.product . fromList) (product :: [Int] -> Int)
-        -- @-node:gcross.20091219130644.1367:product
-        -- @+node:gcross.20091219130644.1375:and
-        ,testProperty "and" $
-            \flag ->
-                liftA2 (==) (N.and . fromList) (and :: [Bool] -> Bool) .
-                    if flag then map (const True) else id
-        -- @-node:gcross.20091219130644.1375:and
-        -- @+node:gcross.20091219130644.1379:or
-        ,testProperty "or" $
-            \flag ->
-                liftA2 (==) (N.or . fromList) (or :: [Bool] -> Bool) .
-                    if flag then map (const False) else id
-        -- @-node:gcross.20091219130644.1379:or
-        -- @-others
-        ]
-    -- @-node:gcross.20091219130644.1364:folding
-    -- @+node:gcross.20091217190104.1428:cuts
+    -- @+node:gcross.20091224210553.1534:cuts
     ,testGroup "cuts"
         -- @    @+others
-        -- @+node:gcross.20091217190104.1429:cutOffset
+        -- @+node:gcross.20091224210553.1552:cutOffset
         [testGroup "cutOffset"
             -- @    @+others
-            -- @+node:gcross.20091217190104.1431:()
+            -- @+node:gcross.20091224210553.1553:()
             [testCase "()" $
                 assertEqual
                     "Is the offset of a non-cut zero?"
                     0
                     (cutOffset () ())
-            -- @-node:gcross.20091217190104.1431:()
-            -- @+node:gcross.20091217190104.1433:() :. ()
-            ,testProperty "() :. ()" $
-                \(x :: Int) -> 0 == cutOffset (() :. ()) (x :. ())
-            -- @-node:gcross.20091217190104.1433:() :. ()
-            -- @+node:gcross.20091217190104.1435:() :. () :. ()
-            ,testProperty "() :. () :. ()" $
-                \(y :: Int) (x :: Int) -> 0 == cutOffset (() :. () :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1435:() :. () :. ()
-            -- @+node:gcross.20091217190104.1439:a :. ()
-            ,testProperty "a :. ()" $
-                \(a :: Int) (x :: Int) -> a*x == cutOffset (a :. ()) (x :. ())
-            -- @-node:gcross.20091217190104.1439:a :. ()
-            -- @+node:gcross.20091217190104.1441:b :. a :. ()
-            ,testProperty "b :. a :. ()" $
-                \(b :: Int) (a :: Int) (y :: Int) (x :: Int) -> b*y+a*x == cutOffset (b :. a :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1441:b :. a :. ()
-            -- @+node:gcross.20091217190104.1443:() :. a :. ()
-            ,testProperty "() :. a :. ()" $
-                \(a :: Int) (y :: Int) (x :: Int) -> a*x == cutOffset (() :. a :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1443:() :. a :. ()
-            -- @+node:gcross.20091217190104.1445:a :. () :. ()
-            ,testProperty "a :. () :. ()" $
-                \(a :: Int) (y :: Int) (x :: Int) -> a*y == cutOffset (a :. () :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1445:a :. () :. ()
-            -- @+node:gcross.20091217190104.1447:(al,ah) :. ()
-            ,testProperty "(al,ah) :. ()" $
-                \(al :: Int)
-                 (ah :: Int)
-                 (x :: Int)
-                 -> al*x == cutOffset ((al,ah) :. ()) (x :. ())
-            -- @-node:gcross.20091217190104.1447:(al,ah) :. ()
-            -- @+node:gcross.20091217190104.1449:(bl,bh) :. (al,ah) :. ()
-            ,testProperty "(bl,bh) :. (al,ah) :. ()" $
-                \(al :: Int)
-                 (ah :: Int)
-                 (bl :: Int)
-                 (bh :: Int)
-                 (x :: Int)
-                 (y :: Int)
-                 -> bl*y + al*x == cutOffset ((bl,bh) :. (al,ah) :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1449:(bl,bh) :. (al,ah) :. ()
-            -- @+node:gcross.20091217190104.1451:() :. (al,ah) :. ()
-            ,testProperty "() :. (al,ah) :. ()" $
-                \(al :: Int)
-                 (ah :: Int)
-                 (x :: Int)
-                 (y :: Int)
-                 -> al*x == cutOffset (() :. (al,ah) :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1451:() :. (al,ah) :. ()
-            -- @+node:gcross.20091217190104.1453:(al,ah) :. () :. ()
-            ,testProperty "(al,ah) :. () :. ()" $
-                \(al :: Int)
-                 (ah :: Int)
-                 (x :: Int)
-                 (y :: Int)
-                 -> al*y == cutOffset ((al,ah) :. () :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1453:(al,ah) :. () :. ()
-            -- @+node:gcross.20091217190104.1455:(al,ah) :. b :. ()
-            ,testProperty "(al,ah) :. () :. ()" $
-                \(al :: Int)
-                 (ah :: Int)
-                 (b :: Int)
-                 (x :: Int)
-                 (y :: Int)
-                 -> al*y + b*x == cutOffset ((al,ah) :. b :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1455:(al,ah) :. b :. ()
-            -- @+node:gcross.20091217190104.1457:a :. (bl,bh) :. ()
-            ,testProperty "a :. (bl,bh) :. ()" $
-                \(bl :: Int)
-                 (bh :: Int)
-                 (a :: Int)
-                 (x :: Int)
-                 (y :: Int)
-                 -> a*y + bl*x == cutOffset (a :. (bl,bh) :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1457:a :. (bl,bh) :. ()
-            -- @+node:gcross.20091217190104.1461:(bl,bh,bs) :. ()
-            ,testProperty "(bl,bh,bs) :. ()" $
-                \(bl :: Int)
-                 (bh :: Int)
-                 (bs :: Int)
-                 (x :: Int)
-                 -> bl*x == cutOffset ((bl,bh,bs) :. ()) (x :. ())
-            -- @-node:gcross.20091217190104.1461:(bl,bh,bs) :. ()
-            -- @+node:gcross.20091217190104.1463:(bl,bh,bs) :. (cl,ch,cs) :. ()
-            ,testProperty "(bl,bh,bs) :. (cl,ch,cs) :. ()" $
-                \(cl :: Int)
-                 (ch :: Int)
-                 (cs :: Int)
-                 (bl :: Int)
-                 (bh :: Int)
-                 (bs :: Int)
-                 (x :: Int)
-                 (y :: Int)
-                 -> bl*y + cl*x == cutOffset ((bl,bh,bs) :. (cl,ch,cs) :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1463:(bl,bh,bs) :. (cl,ch,cs) :. ()
-            -- @+node:gcross.20091217190104.1465:a :. (bl,bh) :. (cl,ch,cs) :. ()
-            ,testProperty "a :. (bl,bh) :. (cl,ch,cs) :. ()" $
-                \(cl :: Int)
-                 (ch :: Int)
-                 (cs :: Int)
-                 (bl :: Int)
-                 (bh :: Int)
-                 (a :: Int)
-                 (x :: Int)
-                 (y :: Int)
-                 (z :: Int)
-                 -> a*x + bl*y + cl*z == cutOffset (a :. (bl,bh) :. (cl,ch,cs) :. ()) (x :. y :. z :. ())
-            -- @-node:gcross.20091217190104.1465:a :. (bl,bh) :. (cl,ch,cs) :. ()
+            -- @-node:gcross.20091224210553.1553:()
+            -- @+node:gcross.20091224210553.1554:All :. ()
+            ,testProperty "All :. ()" $
+                \(x :: Int) ->
+                    0
+                    ==
+                    cutOffset (All :. ()) (shape1 x)
+            -- @-node:gcross.20091224210553.1554:All :. ()
+            -- @+node:gcross.20091224210553.1555:All :. All :. ()
+            ,testProperty "All :. All :. ()" $
+                \y x ->
+                    0
+                    ==
+                    cutOffset (All :. All :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1555:All :. All :. ()
+            -- @+node:gcross.20091224210553.1556:Index :. ()
+            ,testProperty "Index :. ()" $
+                \a x ->
+                    a*x
+                    ==
+                    cutOffset (Index a :. ()) (shape1 x)
+            -- @-node:gcross.20091224210553.1556:Index :. ()
+            -- @+node:gcross.20091224210553.1557:Index :. Index :. ()
+            ,testProperty "Index :. Index :. ()" $
+                \b a y x ->
+                    b*y+a*x
+                    ==
+                    cutOffset (Index b :. Index a :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1557:Index :. Index :. ()
+            -- @+node:gcross.20091224210553.1558:All :. Index :. ()
+            ,testProperty "All :. Index :. ()" $
+                \a y x ->
+                    a*x
+                    ==
+                    cutOffset (All :. Index a :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1558:All :. Index :. ()
+            -- @+node:gcross.20091224210553.1559:Index :. All :. ()
+            ,testProperty "Index :. All :. ()" $
+                \a y x ->
+                    a*y
+                    ==
+                    cutOffset (Index a :. All :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1559:Index :. All :. ()
+            -- @+node:gcross.20091224210553.1560:Range :. ()
+            ,testProperty "Range :. ()" $
+                \al ah x ->
+                    al*x
+                    ==
+                    cutOffset (Range al ah :. ()) (shape1 x)
+            -- @-node:gcross.20091224210553.1560:Range :. ()
+            -- @+node:gcross.20091224210553.1561:Range :. Range :. ()
+            ,testProperty "Range :. Range :. ()" $
+                \al ah bl bh x y ->
+                    bl*y + al*x
+                    ==
+                    cutOffset (Range bl bh :. Range al ah :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1561:Range :. Range :. ()
+            -- @+node:gcross.20091224210553.1562:All :. Range :. ()
+            ,testProperty "All :. Range :. ()" $
+                \al ah x y ->
+                    al*x
+                    ==
+                    cutOffset (All :. Range al ah :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1562:All :. Range :. ()
+            -- @+node:gcross.20091224210553.1563:Range :. All :. ()
+            ,testProperty "Range :. All :. ()" $
+                \al ah x y ->
+                    al*y
+                    ==
+                    cutOffset (Range al ah :. All :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1563:Range :. All :. ()
+            -- @+node:gcross.20091224210553.1564:Range :. Index :. ()
+            ,testProperty "Range :. All :. ()" $
+                \al ah b x y ->
+                    al*y + b*x
+                    ==
+                    cutOffset (Range al ah :. Index b :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1564:Range :. Index :. ()
+            -- @+node:gcross.20091224210553.1565:Index :. Range :. ()
+            ,testProperty "Index :. Range :. ()" $
+                \bl bh a x y ->
+                    a*y + bl*x
+                    ==
+                    cutOffset (Index a :. Range bl bh :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1565:Index :. Range :. ()
+            -- @+node:gcross.20091224210553.1566:StridedRange :. ()
+            ,testProperty "StridedRange :. ()" $
+                \bl bh bs x ->
+                    bl*x
+                    ==
+                    cutOffset (StridedRange bl bh bs :. ()) (shape1 x)
+            -- @-node:gcross.20091224210553.1566:StridedRange :. ()
+            -- @+node:gcross.20091224210553.1567:StridedRange :. StridedRange :. ()
+            ,testProperty "StridedRange :. StridedRange :. ()" $
+                \cl ch cs bl bh bs y x ->
+                    bl*y + cl*x
+                    ==
+                    cutOffset (StridedRange bl bh bs :. StridedRange cl ch cs :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1567:StridedRange :. StridedRange :. ()
+            -- @+node:gcross.20091224210553.1568:Index :. Range :. StridedRange :. ()
+            ,testProperty "Index :. Range :. StridedRange :. ()" $
+                \cl ch cs bl bh a x y z ->
+                    a*x + bl*y + cl*z
+                    ==
+                    cutOffset (Index a :. Range bl bh :. StridedRange cl ch cs :. ()) (shape3 x y z)
+            -- @-node:gcross.20091224210553.1568:Index :. Range :. StridedRange :. ()
             -- @-others
             ]
-        -- @-node:gcross.20091217190104.1429:cutOffset
-        -- @+node:gcross.20091217190104.1483:cutStrides
+        -- @-node:gcross.20091224210553.1552:cutOffset
+        -- @+node:gcross.20091224210553.1587:cutStrides
         ,testGroup "cutStrides"
             -- @    @+others
-            -- @+node:gcross.20091217190104.1484:()
+            -- @+node:gcross.20091224210553.1588:()
             [testCase "()" $
                 assertEqual
-                    "Is non-cut the identity on ()?"
-                    ()
-                    (cutStrides () ())
-            -- @-node:gcross.20091217190104.1484:()
-            -- @+node:gcross.20091217190104.1485:() :. ()
-            ,testProperty "() :. ()" $
+                    "Is the offset of a non-cut zero?"
+                    shape0
+                    (cutStrides () shape0)
+            -- @-node:gcross.20091224210553.1588:()
+            -- @+node:gcross.20091224210553.1589:All :. ()
+            ,testProperty "All :. ()" $
                 \(x :: Int) ->
-                    x :. ()
+                    shape1 x
                     ==
-                    cutStrides (() :. ()) (x :. ())
-            -- @-node:gcross.20091217190104.1485:() :. ()
-            -- @+node:gcross.20091217190104.1486:() :. () :. ()
-            ,testProperty "() :. () :. ()" $
-                \(y :: Int) (x :: Int) ->
-                    y :. x :. ()
+                    cutStrides (All :. ()) (shape1 x)
+            -- @-node:gcross.20091224210553.1589:All :. ()
+            -- @+node:gcross.20091224210553.1590:All :. All :. ()
+            ,testProperty "All :. All :. ()" $
+                \y x ->
+                    shape2 y x
                     ==
-                    cutStrides (() :. () :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1486:() :. () :. ()
-            -- @+node:gcross.20091217190104.1487:a :. ()
-            ,testProperty "a :. ()" $
-                \(a :: Int) (x :: Int) ->
-                    ()
+                    cutStrides (All :. All :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1590:All :. All :. ()
+            -- @+node:gcross.20091224210553.1591:Index :. ()
+            ,testProperty "Index :. ()" $
+                \a x ->
+                    shape0
                     ==
-                    cutStrides (a :. ()) (x :. ())
-            -- @-node:gcross.20091217190104.1487:a :. ()
-            -- @+node:gcross.20091217190104.1488:b :. a :. ()
-            ,testProperty "b :. a :. ()" $
-                \(b :: Int) (a :: Int) (y :: Int) (x :: Int) ->
-                    ()
+                    cutStrides (Index a :. ()) (shape1 x)
+            -- @-node:gcross.20091224210553.1591:Index :. ()
+            -- @+node:gcross.20091224210553.1592:Index :. Index :. ()
+            ,testProperty "Index :. Index :. ()" $
+                \b a y x ->
+                    shape0
                     ==
-                    cutStrides (b :. a :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1488:b :. a :. ()
-            -- @+node:gcross.20091217190104.1489:() :. a :. ()
-            ,testProperty "() :. a :. ()" $
-                \(a :: Int) (y :: Int) (x :: Int) ->
-                    y :. ()
+                    cutStrides (Index b :. Index a :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1592:Index :. Index :. ()
+            -- @+node:gcross.20091224210553.1593:All :. Index :. ()
+            ,testProperty "All :. Index :. ()" $
+                \a y x ->
+                    shape1 y
                     ==
-                    cutStrides (() :. a :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1489:() :. a :. ()
-            -- @+node:gcross.20091217190104.1490:a :. () :. ()
-            ,testProperty "a :. () :. ()" $
-                \(a :: Int) (y :: Int) (x :: Int) ->
-                    x :. ()
+                    cutStrides (All :. Index a :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1593:All :. Index :. ()
+            -- @+node:gcross.20091224210553.1594:Index :. All :. ()
+            ,testProperty "Index :. All :. ()" $
+                \a y x ->
+                    shape1 x
                     ==
-                    cutStrides (a :. () :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1490:a :. () :. ()
-            -- @+node:gcross.20091217190104.1491:(al,ah) :. ()
-            ,testProperty "(al,ah) :. ()" $
-                \(al :: Int)
-                 (ah :: Int)
-                 (x :: Int)
-                 -> x :. () == cutStrides ((al,ah) :. ()) (x :. ())
-            -- @-node:gcross.20091217190104.1491:(al,ah) :. ()
-            -- @+node:gcross.20091217190104.1492:(bl,bh) :. (al,ah) :. ()
-            ,testProperty "(bl,bh) :. (al,ah) :. ()" $
-                \(al :: Int)
-                 (ah :: Int)
-                 (bl :: Int)
-                 (bh :: Int)
-                 (x :: Int)
-                 (y :: Int)
-                 -> y :. x :. () == cutStrides ((bl,bh) :. (al,ah) :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1492:(bl,bh) :. (al,ah) :. ()
-            -- @+node:gcross.20091217190104.1493:() :. (al,ah) :. ()
-            ,testProperty "() :. (al,ah) :. ()" $
-                \(al :: Int)
-                 (ah :: Int)
-                 (x :: Int)
-                 (y :: Int)
-                 -> y :. x :. () == cutStrides (() :. (al,ah) :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1493:() :. (al,ah) :. ()
-            -- @+node:gcross.20091217190104.1494:(al,ah) :. () :. ()
-            ,testProperty "(al,ah) :. () :. ()" $
-                \(al :: Int)
-                 (ah :: Int)
-                 (x :: Int)
-                 (y :: Int)
-                 -> y :. x :. () == cutStrides ((al,ah) :. () :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1494:(al,ah) :. () :. ()
-            -- @+node:gcross.20091217190104.1495:(al,ah) :. b :. ()
-            ,testProperty "(al,ah) :. () :. ()" $
-                \(al :: Int)
-                 (ah :: Int)
-                 (b :: Int)
-                 (x :: Int)
-                 (y :: Int)
-                 -> y :. () == cutStrides ((al,ah) :. b :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1495:(al,ah) :. b :. ()
-            -- @+node:gcross.20091217190104.1496:a :. (bl,bh) :. ()
-            ,testProperty "a :. (bl,bh) :. ()" $
-                \(bl :: Int)
-                 (bh :: Int)
-                 (a :: Int)
-                 (x :: Int)
-                 (y :: Int)
-                 -> x :. () == cutStrides (a :. (bl,bh) :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1496:a :. (bl,bh) :. ()
-            -- @+node:gcross.20091217190104.1497:(bl,bh,bs) :. ()
-            ,testProperty "(bl,bh,bs) :. ()" $
-                \(bl :: Int)
-                 (bh :: Int)
-                 (bs :: Int)
-                 (x :: Int)
-                 -> (bs*x) :. () == cutStrides ((bl,bh,bs) :. ()) (x :. ())
-            -- @-node:gcross.20091217190104.1497:(bl,bh,bs) :. ()
-            -- @+node:gcross.20091217190104.1498:(bl,bh,bs) :. (cl,ch,cs) :. ()
-            ,testProperty "(bl,bh,bs) :. (cl,ch,cs) :. ()" $
-                \(cl :: Int)
-                 (ch :: Int)
-                 (cs :: Int)
-                 (bl :: Int)
-                 (bh :: Int)
-                 (bs :: Int)
-                 (x :: Int)
-                 (y :: Int)
-                 -> (bs*y) :. (cs*x) :. () == cutStrides ((bl,bh,bs) :. (cl,ch,cs) :. ()) (y :. x :. ())
-            -- @-node:gcross.20091217190104.1498:(bl,bh,bs) :. (cl,ch,cs) :. ()
-            -- @+node:gcross.20091217190104.1499:a :. (bl,bh) :. (cl,ch,cs) :. ()
-            ,testProperty "a :. (bl,bh) :. (cl,ch,cs) :. ()" $
-                \(cl :: Int)
-                 (ch :: Int)
-                 (cs :: Int)
-                 (bl :: Int)
-                 (bh :: Int)
-                 (a :: Int)
-                 (x :: Int)
-                 (y :: Int)
-                 (z :: Int)
-                 -> y :. (cs*z) :. () == cutStrides (a :. (bl,bh) :. (cl,ch,cs) :. ()) (x :. y :. z :. ())
-            -- @-node:gcross.20091217190104.1499:a :. (bl,bh) :. (cl,ch,cs) :. ()
+                    cutStrides (Index a :. All :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1594:Index :. All :. ()
+            -- @+node:gcross.20091224210553.1595:Range :. ()
+            ,testProperty "Range :. ()" $
+                \al ah x ->
+                    shape1 x
+                    ==
+                    cutStrides (Range al ah :. ()) (shape1 x)
+            -- @-node:gcross.20091224210553.1595:Range :. ()
+            -- @+node:gcross.20091224210553.1596:Range :. Range :. ()
+            ,testProperty "Range :. Range :. ()" $
+                \al ah bl bh x y ->
+                    shape2 y x
+                    ==
+                    cutStrides (Range bl bh :. Range al ah :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1596:Range :. Range :. ()
+            -- @+node:gcross.20091224210553.1597:All :. Range :. ()
+            ,testProperty "All :. Range :. ()" $
+                \al ah x y ->
+                    shape2 y x
+                    ==
+                    cutStrides (All :. Range al ah :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1597:All :. Range :. ()
+            -- @+node:gcross.20091224210553.1598:Range :. All :. ()
+            ,testProperty "Range :. All :. ()" $
+                \al ah x y ->
+                    shape2 y x
+                    ==
+                    cutStrides (Range al ah :. All :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1598:Range :. All :. ()
+            -- @+node:gcross.20091224210553.1599:Range :. Index :. ()
+            ,testProperty "Range :. All :. ()" $
+                \al ah b x y ->
+                    shape1 y
+                    ==
+                    cutStrides (Range al ah :. Index b :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1599:Range :. Index :. ()
+            -- @+node:gcross.20091224210553.1600:Index :. Range :. ()
+            ,testProperty "Index :. Range :. ()" $
+                \bl bh a x y ->
+                    shape1 x
+                    ==
+                    cutStrides (Index a :. Range bl bh :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1600:Index :. Range :. ()
+            -- @+node:gcross.20091224210553.1601:StridedRange :. ()
+            ,testProperty "StridedRange :. ()" $
+                \bl bh bs x ->
+                    shape1 (bs*x)
+                    ==
+                    cutStrides (StridedRange bl bh bs :. ()) (shape1 x)
+            -- @-node:gcross.20091224210553.1601:StridedRange :. ()
+            -- @+node:gcross.20091224210553.1602:StridedRange :. StridedRange :. ()
+            ,testProperty "StridedRange :. StridedRange :. ()" $
+                \cl ch cs bl bh bs y x ->
+                    shape2 (bs*y) (cs*x)
+                    ==
+                    cutStrides (StridedRange bl bh bs :. StridedRange cl ch cs :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1602:StridedRange :. StridedRange :. ()
+            -- @+node:gcross.20091224210553.1603:Index :. Range :. StridedRange :. ()
+            ,testProperty "Index :. Range :. StridedRange :. ()" $
+                \cl ch cs bl bh a x y z ->
+                    shape2 y (cs*z)
+                    ==
+                    cutStrides (Index a :. Range bl bh :. StridedRange cl ch cs :. ()) (shape3 x y z)
+            -- @-node:gcross.20091224210553.1603:Index :. Range :. StridedRange :. ()
             -- @-others
             ]
-        -- @-node:gcross.20091217190104.1483:cutStrides
-        -- @+node:gcross.20091217190104.1519:cutShape
+        -- @-node:gcross.20091224210553.1587:cutStrides
+        -- @+node:gcross.20091224210553.1623:cutShape
         ,testGroup "cutShape"
             -- @    @+others
-            -- @+node:gcross.20091217190104.1520:()
+            -- @+node:gcross.20091224210553.1624:()
             [testCase "()" $
                 assertEqual
-                    "Is non-cut the identity on ()?"
-                    ()
-                    (cutShape () ())
-            -- @nonl
-            -- @-node:gcross.20091217190104.1520:()
-            -- @+node:gcross.20091217190104.1521:() :. ()
-            ,testProperty "() :. ()" $
-                \(x :: Int) ->
-                    x :. ()
+                    "Is the offset of a non-cut zero?"
+                    shape0
+                    (cutShape () shape0)
+            -- @-node:gcross.20091224210553.1624:()
+            -- @+node:gcross.20091224210553.1625:All :. ()
+            ,testProperty "All :. ()" $
+                \(Positive x) ->
+                    shape1 x
                     ==
-                    cutShape (() :. ()) (x :. ())
-            -- @nonl
-            -- @-node:gcross.20091217190104.1521:() :. ()
-            -- @+node:gcross.20091217190104.1522:() :. () :. ()
-            ,testProperty "() :. () :. ()" $
-                \(y :: Int) (x :: Int) ->
-                    y :. x :. ()
+                    cutShape (All :. ()) (shape1 x)
+            -- @-node:gcross.20091224210553.1625:All :. ()
+            -- @+node:gcross.20091224210553.1626:All :. All :. ()
+            ,testProperty "All :. All :. ()" $
+                \(Positive y) (Positive x) ->
+                    shape2 y x
                     ==
-                    cutShape (() :. () :. ()) (y :. x :. ())
-            -- @nonl
-            -- @-node:gcross.20091217190104.1522:() :. () :. ()
-            -- @+node:gcross.20091217190104.1523:a :. ()
-            ,testProperty "a :. ()" $
-                \
-                (Positive (a :: Int))
-                (Positive (x :: Int))
-                ->
-                    ()
+                    cutShape (All :. All :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1626:All :. All :. ()
+            -- @+node:gcross.20091224210553.1627:Index :. ()
+            ,testProperty "Index :. ()" $
+                \(Positive x) ->
+                  choose (0,x-1) >>= \a -> return $
+                    shape0
                     ==
-                    cutShape (a :. ()) (x :. ())
-            -- @nonl
-            -- @-node:gcross.20091217190104.1523:a :. ()
-            -- @+node:gcross.20091217190104.1524:b :. a :. ()
-            ,testProperty "b :. a :. ()" $
-                \
-                (Positive (b :: Int))
-                (Positive (a :: Int))
-                (Positive (y :: Int))
-                (Positive (x :: Int))
-                ->
-                    ()
+                    cutShape (Index a :. ()) (shape1 x)
+            -- @-node:gcross.20091224210553.1627:Index :. ()
+            -- @+node:gcross.20091224210553.1628:Index :. Index :. ()
+            ,testProperty "Index :. Index :. ()" $
+                \(Positive y) (Positive x) -> do
+                  b <- choose (0,y-1)
+                  a <- choose (0,x-1)
+                  return $
+                    shape0
                     ==
-                    cutShape (b :. a :. ()) (y :. x :. ())
-            -- @nonl
-            -- @-node:gcross.20091217190104.1524:b :. a :. ()
-            -- @+node:gcross.20091217190104.1525:() :. a :. ()
-            ,testProperty "() :. a :. ()" $
-                \
-                (Positive (a :: Int))
-                (Positive (y :: Int))
-                (Positive (x :: Int))
-                ->
-                    y :. ()
+                    cutShape (Index b :. Index a :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1628:Index :. Index :. ()
+            -- @+node:gcross.20091224210553.1629:All :. Index :. ()
+            ,testProperty "All :. Index :. ()" $
+                \(Positive y) (Positive x) ->
+                  choose (0,x-1) >>= \a -> return $
+                    shape1 y
                     ==
-                    cutShape (() :. a :. ()) (y :. x :. ())
-            -- @nonl
-            -- @-node:gcross.20091217190104.1525:() :. a :. ()
-            -- @+node:gcross.20091217190104.1526:a :. () :. ()
-            ,testProperty "a :. () :. ()" $
-                \
-                (Positive (a :: Int))
-                (Positive (y :: Int))
-                (Positive (x :: Int))
-                ->
-                    x :. ()
+                    cutShape (All :. Index a :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1629:All :. Index :. ()
+            -- @+node:gcross.20091224210553.1630:Index :. All :. ()
+            ,testProperty "Index :. All :. ()" $
+                \(Positive y) (Positive x) ->
+                  choose (0,y-1) >>= \a -> return $
+                    shape1 x
                     ==
-                    cutShape (a :. () :. ()) (y :. x :. ())
-            -- @nonl
-            -- @-node:gcross.20091217190104.1526:a :. () :. ()
-            -- @+node:gcross.20091217190104.1527:(al,ah) :. ()
-            ,testProperty "(al,ah) :. ()" $
-                \
-                (Positive (a1 :: Int))
-                (Positive (a2 :: Int))
-                (Positive (x :: Int))
-                 -> let ah = a1 `max` a2
-                        al = a1 `min` a2
-                    in (ah-al) :. () == cutShape ((al,ah) :. ()) ((x+ah) :. ())
-            -- @nonl
-            -- @-node:gcross.20091217190104.1527:(al,ah) :. ()
-            -- @+node:gcross.20091217190104.1528:(bl,bh) :. (al,ah) :. ()
-            ,testProperty "(bl,bh) :. (al,ah) :. ()" $
-                \
-                (Positive (a1 :: Int))
-                (Positive (a2 :: Int))
-                (Positive (b1 :: Int))
-                (Positive (b2 :: Int))
-                (Positive (x :: Int))
-                (Positive (y :: Int))
-                 -> let ah = a1 `max` a2
-                        al = a1 `min` a2
-                        bh = a1 `max` b2
-                        bl = a1 `min` b2
-                    in (bh-bl) :. (ah-al) :. () == cutShape ((bl,bh) :. (al,ah) :. ()) ((y+bh) :. (x+ah) :. ())
-            -- @nonl
-            -- @-node:gcross.20091217190104.1528:(bl,bh) :. (al,ah) :. ()
-            -- @+node:gcross.20091217190104.1529:() :. (al,ah) :. ()
-            ,testProperty "() :. (al,ah) :. ()" $
-                \
-                (Positive (a1 :: Int))
-                (Positive (a2 :: Int))
-                (Positive (x :: Int))
-                (Positive (y :: Int))
-                 -> let ah = a1 `max` a2
-                        al = a1 `min` a2
-                    in y :. (ah-al) :. () == cutShape (() :. (al,ah) :. ()) (y :. (x+ah) :. ())
-            -- @nonl
-            -- @-node:gcross.20091217190104.1529:() :. (al,ah) :. ()
-            -- @+node:gcross.20091217190104.1530:(al,ah) :. () :. ()
-            ,testProperty "(al,ah) :. () :. ()" $
-                \
-                (Positive (a1 :: Int))
-                (Positive (a2 :: Int))
-                (Positive (x :: Int))
-                (Positive (y :: Int))
-                 -> let ah = a1 `max` a2
-                        al = a1 `min` a2
-                    in (ah-al) :. x :. () == cutShape ((al,ah) :. () :. ()) ((y+ah) :. x :. ())
-            -- @nonl
-            -- @-node:gcross.20091217190104.1530:(al,ah) :. () :. ()
-            -- @+node:gcross.20091217190104.1531:(al,ah) :. b :. ()
-            ,testProperty "(al,ah) :. () :. ()" $
-                \
-                (Positive (a1 :: Int))
-                (Positive (a2 :: Int))
-                (Positive (b :: Int))
-                (Positive (x :: Int))
-                (Positive (y :: Int))
-                 -> let ah = a1 `max` a2
-                        al = a1 `min` a2
-                    in (ah-al) :. () == cutShape ((al,ah) :. b :. ()) ((y+ah) :. x :. ())
-            -- @nonl
-            -- @-node:gcross.20091217190104.1531:(al,ah) :. b :. ()
-            -- @+node:gcross.20091217190104.1532:a :. (bl,bh) :. ()
-            ,testProperty "a :. (bl,bh) :. ()" $
-                \
-                (Positive (b1 :: Int))
-                (Positive (b2 :: Int))
-                (Positive (a :: Int))
-                (Positive (x :: Int))
-                (Positive (y :: Int))
-                 -> let bh = b1 `max` b2
-                        bl = b1 `min` b2
-                    in (bh-bl) :. () == cutShape (a :. (bl,bh) :. ()) (y :. (x+bh) :. ())
-            -- @-node:gcross.20091217190104.1532:a :. (bl,bh) :. ()
-            -- @+node:gcross.20091217190104.1533:(bl,bh,bs) :. ()
-            ,testProperty "(bl,bh,bs) :. ()" $
-                \
-                (Positive (b1 :: Int))
-                (Positive (b2 :: Int))
-                (Positive (bs :: Int))
-                (Positive (a :: Int))
-                (Positive (x :: Int))
-                (Positive (y :: Int))
-                 -> let bh = b1 `max` b2
-                        bl = b1 `min` b2
-                    in ((bh-bl-1) `div` bs + 1) :. () == cutShape ((bl,bh,bs) :. ()) ((x+bh) :. ())
-            -- @nonl
-            -- @-node:gcross.20091217190104.1533:(bl,bh,bs) :. ()
-            -- @+node:gcross.20091217190104.1534:(bl,bh,bs) :. (cl,ch,cs) :. ()
-            ,testProperty "(bl,bh,bs) :. (cl,ch,cs) :. ()" $
-                \
-                (Positive (b1 :: Int))
-                (Positive (b2 :: Int))
-                (Positive (bs :: Int))
-                (Positive (c1 :: Int))
-                (Positive (c2 :: Int))
-                (Positive (cs :: Int))
-                (Positive (a :: Int))
-                (Positive (x :: Int))
-                (Positive (y :: Int))
-                 -> let bh = b1 `max` b2
-                        bl = b1 `min` b2
-                        ch = c1 `max` c2
-                        cl = c1 `min` c2
-                    in ((bh-bl-1) `div` bs + 1) :. ((ch-cl-1) `div` cs + 1) :. () == cutShape ((bl,bh,bs) :. (cl,ch,cs) :. ()) ((y+bh) :. (x+ch) :. ())
-            -- @nonl
-            -- @-node:gcross.20091217190104.1534:(bl,bh,bs) :. (cl,ch,cs) :. ()
-            -- @+node:gcross.20091217190104.1535:a :. (bl,bh) :. (cl,ch,cs) :. ()
-            ,testProperty "a :. (bl,bh) :. (cl,ch,cs) :. ()" $
-                \
-                (Positive (b1 :: Int))
-                (Positive (b2 :: Int))
-                (Positive (c1 :: Int))
-                (Positive (c2 :: Int))
-                (Positive (cs :: Int))
-                (Positive (a :: Int))
-                (Positive (x :: Int))
-                (Positive (y :: Int))
-                (Positive (z :: Int))
-                 -> let bh = b1 `max` b2
-                        bl = b1 `min` b2
-                        ch = c1 `max` c2
-                        cl = c1 `min` c2
-                    in (bh-bl) :. ((ch-cl-1) `div` cs + 1) :. () == cutShape (a :. (bl,bh) :. (cl,ch,cs) :. ()) (x :. (y+bh) :. (z+ch) :. ())
-            -- @nonl
-            -- @-node:gcross.20091217190104.1535:a :. (bl,bh) :. (cl,ch,cs) :. ()
+                    cutShape (Index a :. All :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1630:Index :. All :. ()
+            -- @+node:gcross.20091224210553.1631:Range :. ()
+            ,testProperty "Range :. ()" $
+                \(Positive x) -> do
+                  al <- choose (0,x-1)
+                  ah <- choose (al,x)
+                  return $
+                    shape1 (ah-al)
+                    ==
+                    cutShape (Range al ah :. ()) (shape1 x)
+            -- @-node:gcross.20091224210553.1631:Range :. ()
+            -- @+node:gcross.20091224210553.1632:Range :. Range :. ()
+            ,testProperty "Range :. Range :. ()" $
+                \(Positive x) (Positive y) -> do
+                  al <- choose (0,x-1)
+                  ah <- choose (al,x)
+                  bl <- choose (0,y-1)
+                  bh <- choose (bl,y)
+                  return $
+                    shape2 (bh-bl) (ah-al)
+                    ==
+                    cutShape (Range bl bh :. Range al ah :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1632:Range :. Range :. ()
+            -- @+node:gcross.20091224210553.1633:All :. Range :. ()
+            ,testProperty "All :. Range :. ()" $
+                \(Positive x) (Positive y) -> do
+                  al <- choose (0,x-1)
+                  ah <- choose (al,x)
+                  return $
+                    shape2 y (ah-al)
+                    ==
+                    cutShape (All :. Range al ah :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1633:All :. Range :. ()
+            -- @+node:gcross.20091224210553.1634:Range :. All :. ()
+            ,testProperty "Range :. All :. ()" $
+                \(Positive x) (Positive y) -> do
+                  al <- choose (0,y-1)
+                  ah <- choose (al,y)
+                  return $
+                    shape2 (ah-al) x
+                    ==
+                    cutShape (Range al ah :. All :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1634:Range :. All :. ()
+            -- @+node:gcross.20091224210553.1635:Range :. Index :. ()
+            ,testProperty "Range :. All :. ()" $
+                \(Positive x) (Positive y) -> do
+                  al <- choose (0,y-1)
+                  ah <- choose (al,y)
+                  b <- choose (0,x-1)
+                  return $
+                    shape1 (ah-al)
+                    ==
+                    cutShape (Range al ah :. Index b :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1635:Range :. Index :. ()
+            -- @+node:gcross.20091224210553.1636:Index :. Range :. ()
+            ,testProperty "Index :. Range :. ()" $
+                \(Positive x) (Positive y) -> do
+                  a <- choose (0,y-1)
+                  bl <- choose (0,x-1)
+                  bh <- choose (bl,x)
+                  return $
+                    shape1 (bh-bl)
+                    ==
+                    cutShape (Index a :. Range bl bh :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1636:Index :. Range :. ()
+            -- @+node:gcross.20091224210553.1637:StridedRange :. ()
+            ,testProperty "StridedRange :. ()" $
+                \(Positive xm1) -> do
+                  let x = xm1+1
+                  bl <- choose (0,x-1)
+                  bh <- choose (bl+1,x)
+                  bs <- choose (1,bh-bl)
+                  return $
+                    shape1 ((bh-bl-1) `div` bs + 1)
+                    ==
+                    cutShape (StridedRange bl bh bs :. ()) (shape1 x)
+            -- @-node:gcross.20091224210553.1637:StridedRange :. ()
+            -- @+node:gcross.20091224210553.1638:StridedRange :. StridedRange :. ()
+            ,testProperty "StridedRange :. StridedRange :. ()" $
+                \(Positive xm1) (Positive ym1) -> do
+                  let x = xm1+1
+                      y = ym1+1
+                  bl <- choose (0,y-1)
+                  bh <- choose (bl+1,y)
+                  bs <- choose (1,bh-bl)
+                  cl <- choose (0,x-1)
+                  ch <- choose (cl+1,x)
+                  cs <- choose (1,ch-cl)
+                  return $
+                    shape2 ((bh-bl-1) `div` bs + 1) ((ch-cl-1) `div` cs + 1)
+                    ==
+                    cutShape (StridedRange bl bh bs :. StridedRange cl ch cs :. ()) (shape2 y x)
+            -- @-node:gcross.20091224210553.1638:StridedRange :. StridedRange :. ()
+            -- @+node:gcross.20091224210553.1639:Index :. Range :. StridedRange :. ()
+            ,testProperty "Index :. Range :. StridedRange :. ()" $
+                \(Positive x) (Positive y) (Positive z) -> do
+                  a <- choose (0,x-1)
+                  bl <- choose (0,y-1)
+                  bh <- choose (bl,y)
+                  cl <- choose (0,z-1)
+                  ch <- choose (cl+1,z)
+                  cs <- choose (1,ch-cl)
+                  return $
+                    shape2 (bh-bl) ((ch-cl-1) `div` cs + 1)
+                    ==
+                    cutShape (Index a :. Range bl bh :. StridedRange cl ch cs :. ()) (shape3 x y z)
+            -- @-node:gcross.20091224210553.1639:Index :. Range :. StridedRange :. ()
             -- @-others
             ]
-        -- @nonl
-        -- @-node:gcross.20091217190104.1519:cutShape
-        -- @+node:gcross.20091218141305.1331:cut
-        ,testGroup "cut"
-            -- @    @+others
-            -- @+node:gcross.20091218141305.1332:1D, null cut
-            [testProperty "1D, null cut" $
-                liftA2 (==) (toList . cut (() :. ()) . fromList) (id :: [Int] -> [Int])
-            -- @-node:gcross.20091218141305.1332:1D, null cut
-            -- @+node:gcross.20091218141305.1334:1D, skip 1
-            ,testProperty "1D, skip 1" $
-                \(lst :: [Int]) ->
-                    liftA2 (==) (toList . cut ((0::Int,length lst,1::Int) :. ()) . fromList) (id :: [Int] -> [Int]) lst
-            -- @-node:gcross.20091218141305.1334:1D, skip 1
-            -- @+node:gcross.20091218141305.1336:1D, skip 2
-            ,testProperty "1D, skip 2" $
-                \(lst :: [Int]) ->
-                    liftA2 (==) (toList . cut ((0::Int,length lst,2::Int) :. ()) . fromList) (skipList 2) lst
-            -- @-node:gcross.20091218141305.1336:1D, skip 2
-            -- @+node:gcross.20091218141305.1339:1D, skip 3
-            ,testProperty "1D, skip 3" $
-                \(lst :: [Int]) ->
-                    liftA2 (==) (toList . cut ((0::Int,length lst,3::Int) :. ()) . fromList) (skipList 3) lst
-            -- @-node:gcross.20091218141305.1339:1D, skip 3
-            -- @+node:gcross.20091218141305.1341:1D, skip N
-            ,testProperty "1D, skip N" $
-                \(lst :: [Int]) (Positive (n :: Int)) ->
-                    liftA2 (==) (toList . cut ((0::Int,length lst,n) :. ()) . fromList) (skipList n) lst
-            -- @-node:gcross.20091218141305.1341:1D, skip N
-            -- @+node:gcross.20091218141305.1343:1D, arbitrary (lo,hi,skip)
-            ,testProperty "1D, arbitrary (lo,hi,skip)" $ mapSize (\n -> if n > 10 then 10 else n) $
-                \
-                (Positive (x :: Int))
-                (Positive (y :: Int))
-                (Positive (z :: Int))
-                (Positive (w :: Int))
-                ->
-                let a = x
-                    b = x+y
-                    c = x+y+z
-                in (toList . cut ((a,c,b-a) :. ()) . fromList) [0..c+w] == [a,b..c-1]
-            -- @-node:gcross.20091218141305.1343:1D, arbitrary (lo,hi,skip)
-            -- @+node:gcross.20091219130644.1369:1D, sum arbitrary (lo,hi,skip)
-            ,testProperty "1D, sum over arbitrary (lo,hi,skip)" $ mapSize (\n -> if n > 10 then 10 else n) $
-                \
-                (Positive (x :: Int))
-                (Positive (y :: Int))
-                (Positive (z :: Int))
-                (Positive (w :: Int))
-                ->
-                let a = x
-                    b = x+y
-                    c = x+y+z
-                in (N.sum . cut ((a,c,b-a) :. ()) . fromList) [0..c+w] == sum [a,b..c-1]
-            -- @-node:gcross.20091219130644.1369:1D, sum arbitrary (lo,hi,skip)
-            -- @+node:gcross.20091220115426.1653:2D, 3x3, skip 2
-            ,testCase "2D, 3x3, skip 2" $
-                assertEqual
-                    "Is the extracted list correct?"
-                    [1,3,7,9::Int]
-                    .
-                    toList
-                    .
-                    cut ((0,3,2) :. (0,3,2) :. () :: Vec2 (Int,Int,Int))
-                    .
-                    fromListWithShape (3 :. 3 :. () :: Vec2 Int)
-                    $
-                    [1,2,3
-                    ,4,5,6
-                    ,7,8,9
-                    ]
-            -- @-node:gcross.20091220115426.1653:2D, 3x3, skip 2
-            -- @+node:gcross.20091220115426.1655:2D, 3x3, (1,3,2) :. (1,3,2) :. ()
-            ,testCase "2D, 3x3, (1,3,2) :. (1,3,2) :. ()" $
-                assertEqual
-                    "Is the extracted list correct?"
-                    [5::Int]
-                    .
-                    toList
-                    .
-                    cut ((1,3,2) :. (1,3,2) :. () :: Vec2 (Int,Int,Int))
-                    .
-                    fromListWithShape (3 :. 3 :. () :: Vec2 Int)
-                    $
-                    [1,2,3
-                    ,4,5,6
-                    ,7,8,9
-                    ]
-            -- @-node:gcross.20091220115426.1655:2D, 3x3, (1,3,2) :. (1,3,2) :. ()
-            -- @+node:gcross.20091220115426.1657:2D, 3x3, 1 :. () :. ()
-            ,testCase "2D, 3x3, 1 :. () :. ()" $
-                assertEqual
-                    "Is the extracted list correct?"
-                    [4,5,6::Int]
-                    .
-                    toList
-                    .
-                    cut ((1::Int) :. () :. ())
-                    .
-                    fromListWithShape (3 :. 3 :. () :: Vec2 Int)
-                    $
-                    [1,2,3
-                    ,4,5,6
-                    ,7,8,9
-                    ]
-            -- @-node:gcross.20091220115426.1657:2D, 3x3, 1 :. () :. ()
-            -- @+node:gcross.20091220115426.1768:2D, 3x3, () :. 1 :. ()
-            ,testCase "2D, 3x3, () :. 1 :. ()" $
-                assertEqual
-                    "Is the extracted list correct?"
-                    [2,5,8::Int]
-                    .
-                    toList
-                    .
-                    cut (() :. (1::Int) :. ())
-                    .
-                    fromListWithShape (3 :. 3 :. () :: Vec2 Int)
-                    $
-                    [1,2,3
-                    ,4,5,6
-                    ,7,8,9
-                    ]
-            -- @-node:gcross.20091220115426.1768:2D, 3x3, () :. 1 :. ()
-            -- @+node:gcross.20091224104908.1433:3D, 3x3x3, () :. () :. 0 :. ()
-            ,testCase "3D, 3x3x3, () :. () :. 0 :. ()" $
-                assertEqual
-                    "Is the extracted list correct?"
-                    [1,4,7
-                    ,9,6,3
-                    ,1,2,3::Int
-                    ]
-                    .
-                    toList
-                    .
-                    cut (() :. () :. (0::Int) :. ())
-                    .
-                    fromListWithShape (3 :. 3 :. 3 :. () :: Vec3 Int)
-                    $
-                    [1,2,3
-                    ,4,5,6
-                    ,7,8,9
-
-                    ,9,8,7
-                    ,6,5,4
-                    ,3,2,1
-
-                    ,1,5,9
-                    ,2,6,7
-                    ,3,4,8
-                    ]
-            -- @-node:gcross.20091224104908.1433:3D, 3x3x3, () :. () :. 0 :. ()
-            -- @+node:gcross.20091224104908.1437:3D, 3x3x3, () :. () :. 1 :. ()
-            ,testCase "3D, 3x3x3, () :. () :. 1 :. ()" $
-                assertEqual
-                    "Is the extracted list correct?"
-                    [2,5,8
-                    ,8,5,2
-                    ,5,6,4::Int
-                    ]
-                    .
-                    toList
-                    .
-                    cut (() :. () :. (1::Int) :. ())
-                    .
-                    fromListWithShape (3 :. 3 :. 3 :. () :: Vec3 Int)
-                    $
-                    [1,2,3
-                    ,4,5,6
-                    ,7,8,9
-
-                    ,9,8,7
-                    ,6,5,4
-                    ,3,2,1
-
-                    ,1,5,9
-                    ,2,6,7
-                    ,3,4,8
-                    ]
-            -- @-node:gcross.20091224104908.1437:3D, 3x3x3, () :. () :. 1 :. ()
-            -- @+node:gcross.20091224104908.1435:3D, 3x3x3, () :. () :. 2 :. ()
-            ,testCase "3D, 3x3x3, () :. () :. 2 :. ()" $
-                assertEqual
-                    "Is the extracted list correct?"
-                    [3,6,9
-                    ,7,4,1
-                    ,9,7,8::Int
-                    ]
-                    .
-                    toList
-                    .
-                    cut (() :. () :. (2::Int) :. ())
-                    .
-                    fromListWithShape (3 :. 3 :. 3 :. () :: Vec3 Int)
-                    $
-                    [1,2,3
-                    ,4,5,6
-                    ,7,8,9
-
-                    ,9,8,7
-                    ,6,5,4
-                    ,3,2,1
-
-                    ,1,5,9
-                    ,2,6,7
-                    ,3,4,8
-                    ]
-            -- @-node:gcross.20091224104908.1435:3D, 3x3x3, () :. () :. 2 :. ()
-            -- @+node:gcross.20091224104908.1445:3D, MxNxO, () :. () :. i :. ()
-            ,testProperty "3D, MxNxO () :. () :. i :. ()" $ \(UTI m) (UTI n) (UTI o) ->
-                choose (0,o-1) >>= \i ->
-                vectorOf (m*n*o) (arbitrary :: Gen Int) >>=
-                    return . liftA2 (==)
-                        (skipList o . drop i)
-                        (N.toList . cut (() :. () :. (i::Int) :. ()) . N.fromListWithShape (m :. n :. o :. () :: Vec3 Int))
-            -- @-node:gcross.20091224104908.1445:3D, MxNxO, () :. () :. i :. ()
-            -- @-others
-            ]
-        -- @-node:gcross.20091218141305.1331:cut
+        -- @-node:gcross.20091224210553.1623:cutShape
         -- @-others
         ]
-    -- @-node:gcross.20091217190104.1428:cuts
+    -- @-node:gcross.20091224210553.1534:cuts
+    -- @+node:gcross.20091224210553.1645:folding
+    ,testGroup "folding"
+        -- @    @+others
+        -- @+node:gcross.20091224210553.1646:sum
+        [testProperty "sum" $
+            liftA2 (==) (N.sum . fromList) (sum :: [Int] -> Int)
+        -- @-node:gcross.20091224210553.1646:sum
+        -- @+node:gcross.20091224210553.1647:product
+        ,testProperty "product" $
+            liftA2 (==) (N.product . fromList) (product :: [Int] -> Int)
+        -- @-node:gcross.20091224210553.1647:product
+        -- @+node:gcross.20091224210553.1648:and
+        ,testProperty "and" $
+            \flag ->
+                liftA2 (==) (N.and . fromList) (and :: [Bool] -> Bool) .
+                    if flag then map (const True) else id
+        -- @-node:gcross.20091224210553.1648:and
+        -- @+node:gcross.20091224210553.1649:or
+        ,testProperty "or" $
+            \flag ->
+                liftA2 (==) (N.or . fromList) (or :: [Bool] -> Bool) .
+                    if flag then map (const False) else id
+        -- @-node:gcross.20091224210553.1649:or
+        -- @-others
+        ]
+    -- @-node:gcross.20091224210553.1645:folding
+    -- @+node:gcross.20091224210553.1651:fromList/toList
+    ,testProperty "fromList/toList" $
+        liftA2 (==) (toList . fromList :: [Int] -> [Int]) id
+    -- @-node:gcross.20091224210553.1651:fromList/toList
     -- @-others
     -- @-node:gcross.20091217190104.1416:<< Tests >>
     -- @nl

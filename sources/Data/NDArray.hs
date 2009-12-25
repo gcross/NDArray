@@ -26,7 +26,16 @@ import Control.Monad
 
 import Data.Typeable
 import qualified Data.Vec as V
-import Data.Vec((:.)(..))
+import Data.Vec((:.)(..)
+               ,Vec2
+               ,Vec3
+               ,Vec4
+               ,Vec5
+               ,Vec6
+               ,Vec7
+               ,Vec8
+               ,Vec9
+               )
 import Data.Vec.Nat
 import Data.Vec.LinAlg
 
@@ -56,39 +65,39 @@ instance Cut () () where
     cutStrides () = id
     cutShape () = id
 
-instance Cut c v => Cut (() :. c) (Int :. v) where
-    type CutResult (() :. c) (Int :. v) = Int :. (CutResult c v)
-    cutOffset (() :. cs) (_ :. vs) = cutOffset cs vs
-    cutPreservesContiguity (() :. cs) (_ :. vs) = cutPreservesContiguity cs vs
-    cutStrides (() :. cs) (stride :. vs) = stride :. cutStrides cs vs
-    cutShape (() :. cs) (bound :. vs) = bound :. cutShape cs vs
+instance Cut c v => Cut (All :. c) (Int :. v) where
+    type CutResult (All :. c) (Int :. v) = Int :. (CutResult c v)
+    cutOffset (All :. cs) (_ :. vs) = cutOffset cs vs
+    cutPreservesContiguity (All :. cs) (_ :. vs) = cutPreservesContiguity cs vs
+    cutStrides (All :. cs) (stride :. vs) = stride :. cutStrides cs vs
+    cutShape (All :. cs) (bound :. vs) = bound :. cutShape cs vs
 
-instance Cut c v => Cut (Int :. c) (Int :. v) where
-    type CutResult (Int :. c) (Int :. v) = CutResult c v
-    cutOffset (index :. cs) (stride :. vs) = (index*stride) + cutOffset cs vs
+instance Cut c v => Cut (Index :. c) (Int :. v) where
+    type CutResult (Index :. c) (Int :. v) = CutResult c v
+    cutOffset (Index index :. cs) (stride :. vs) = (index*stride) + cutOffset cs vs
     cutPreservesContiguity _ _ = False
     cutStrides (_ :. cs) (_ :. vs) = cutStrides cs vs
-    cutShape (index :. cs) (bound :. vs) =
+    cutShape (Index index :. cs) (bound :. vs) =
         assert (index >= 0 || index < bound) $
             cutShape cs vs
 
-instance Cut c v => Cut ((Int,Int) :. c) (Int :. v) where
-    type CutResult ((Int,Int) :. c) (Int :. v) = Int :. (CutResult c v)
-    cutOffset ((lo,_) :. cs) (stride :. vs) = (lo*stride) + cutOffset cs vs
-    cutPreservesContiguity ((lo,hi) :. cs) (bound :. vs) =
+instance Cut c v => Cut (Range :. c) (Int :. v) where
+    type CutResult (Range :. c) (Int :. v) = Int :. (CutResult c v)
+    cutOffset (Range lo _ :. cs) (stride :. vs) = (lo*stride) + cutOffset cs vs
+    cutPreservesContiguity (Range lo hi :. cs) (bound :. vs) =
         (lo == 0) && (hi == bound) && cutPreservesContiguity cs vs
     cutStrides (_ :. cs) (stride :. vs) = stride :. cutStrides cs vs
-    cutShape ((lo,hi) :. cs) (bound :. vs) =
+    cutShape (Range lo hi :. cs) (bound :. vs) =
         assert (lo >= 0 || hi < bound) $
             (hi-lo) :. cutShape cs vs
 
-instance Cut c v => Cut ((Int,Int,Int) :. c) (Int :. v) where
-    type CutResult ((Int,Int,Int) :. c) (Int :. v) = Int :. (CutResult c v)
-    cutOffset ((lo,_,_) :. cs) (stride :. vs) = (lo*stride) + cutOffset cs vs
-    cutPreservesContiguity ((lo,hi,skip) :. cs) (bound :. vs) =
+instance Cut c v => Cut (StridedRange :. c) (Int :. v) where
+    type CutResult (StridedRange :. c) (Int :. v) = Int :. (CutResult c v)
+    cutOffset (StridedRange lo _ _ :. cs) (stride :. vs) = (lo*stride) + cutOffset cs vs
+    cutPreservesContiguity (StridedRange lo hi skip :. cs) (bound :. vs) =
         (lo == 0) && (hi == bound) && (skip == 1) && cutPreservesContiguity cs vs
-    cutStrides ((_,_,skip) :. cs) (stride :. vs) = (skip*stride) :. cutStrides cs vs
-    cutShape ((lo,hi,skip) :. cs) (bound :. vs) =
+    cutStrides (StridedRange _ _ skip :. cs) (stride :. vs) = (skip*stride) :. cutStrides cs vs
+    cutShape (StridedRange lo hi skip :. cs) (bound :. vs) =
         assert (lo >= 0 || hi < bound) $
             ((hi-lo-1) `div` skip + 1)  :. cutShape cs vs
 -- @-node:gcross.20091217190104.1459:Cut
@@ -149,6 +158,20 @@ instance (Show a, Typeable a) => Exception (Found a)
 -- @-node:gcross.20091219130644.1372:Found
 -- @-node:gcross.20091219130644.1371:Exceptions
 -- @+node:gcross.20091217190104.1268:Types
+-- @+node:gcross.20091224210553.1380:Cut Specification
+-- @+node:gcross.20091224210553.1381:All
+data All = All
+-- @-node:gcross.20091224210553.1381:All
+-- @+node:gcross.20091224210553.1382:Index
+data Index = Index Int
+-- @-node:gcross.20091224210553.1382:Index
+-- @+node:gcross.20091224210553.1383:Range
+data Range = Range Int Int
+-- @-node:gcross.20091224210553.1383:Range
+-- @+node:gcross.20091224210553.1384:StridedRange
+data StridedRange = StridedRange Int Int Int
+-- @-node:gcross.20091224210553.1384:StridedRange
+-- @-node:gcross.20091224210553.1380:Cut Specification
 -- @+node:gcross.20091217190104.1269:NDArray
 data NDArray indexType dataType =
     NDArray
@@ -406,6 +429,18 @@ or = any id
 and = all id
 -- @-node:gcross.20091219130644.1373:any/all/and/or
 -- @-node:gcross.20091219130644.1361:Folding
+-- @+node:gcross.20091224210553.1569:shapeN
+shape0 = ()
+shape1 a = a :. () :: Int :. ()
+shape2 a b = a :. b :. () :: Vec2 Int
+shape3 a b c = a :. b :. c :. () :: Vec3 Int
+shape4 a b c d = a :. b :. c :. d :. () :: Vec4 Int
+shape5 a b c d e = a :. b :. c :. d :. e :. () :: Vec5 Int
+shape6 a b c d e f = a :. b :. c :. d :. e :. f :. () :: Vec6 Int
+shape7 a b c d e f g = a :. b :. c :. d :. e :. f :. g :. () :: Vec7 Int
+shape8 a b c d e f g h = a :. b :. c :. d :. e :. f :. g :. h :. () :: Vec8 Int
+shape9 a b c d e f g h i = a :. b :. c :. d :. e :. f :. g :. h :. i :. () :: Vec9 Int
+-- @-node:gcross.20091224210553.1569:shapeN
 -- @-node:gcross.20091217190104.1270:Functions
 -- @-others
 -- @-node:gcross.20091217190104.1264:@thin NDArray.hs
