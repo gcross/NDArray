@@ -258,12 +258,18 @@ fromListWithShape ::
     indexType ->
     [dataType] ->
     NDArray indexType dataType
-fromListWithShape shape list =
-    assert (numberOfElementsFromShape shape == length list) $
-        fst . unsafePerformIO . withNewNDArray shape . go $ list
+fromListWithShape shape =
+    fst
+    .
+    unsafePerformIO
+    .
+    withNewNDArray shape
+    .
+    go (numberOfElementsFromShape shape)
   where
-    go [] _ = return ()
-    go (x:xs) ptr = poke ptr x >> go xs (ptr `advancePtr` 1)
+    go 0 _ _ = return ()
+    go n [] _ = error ("Ran out of list elements while populating array; expected " ++ show (numberOfElementsFromShape shape) ++ " but saw " ++ show (numberOfElementsFromShape shape - n))
+    go n (x:xs) ptr = poke ptr x >> go (n-1) xs (ptr `advancePtr` 1)
 -- @-node:gcross.20091220115426.1652:fromListWithShape
 -- @+node:gcross.20091218165002.1494:toList
 toList ::
