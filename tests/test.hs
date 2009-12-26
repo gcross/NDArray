@@ -48,6 +48,17 @@ import Data.NDArray (cut
                     ,shape7
                     ,shape8
                     ,shape9
+                    ,i0
+                    ,i1
+                    ,i2
+                    ,i3
+                    ,i4
+                    ,i5
+                    ,i6
+                    ,i7
+                    ,i8
+                    ,i9
+                    ,(!)
                     )
 import qualified Data.NDArray as N
 -- @-node:gcross.20091217190104.1412:<< Import needed modules >>
@@ -550,6 +561,56 @@ main = defaultMain
     ,testProperty "fromList/toList" $
         liftA2 (==) (toList . fromList :: [Int] -> [Int]) id
     -- @-node:gcross.20091224210553.1651:fromList/toList
+    -- @+node:gcross.20091226102316.1372:(!)
+    ,testGroup "(!)"
+        -- @    @+others
+        -- @+node:gcross.20091226102316.1373:1D
+        [testProperty "1D" $
+            \(list :: [Int]) -> (not.null) list ==>
+                choose (0,length list-1) >>= \index -> return $
+                    liftA2 (==)
+                        ((! i1 index) . fromList)
+                        (!! index)
+                        list
+        -- @-node:gcross.20091226102316.1373:1D
+        -- @+node:gcross.20091226102316.1375:2D
+        ,testProperty "2D" $ do
+            (UTI m) <- arbitrary
+            (UTI n) <- arbitrary
+            list <- vectorOf (m*n) (arbitrary :: Gen Int)
+            i <- choose (0,m-1)
+            j <- choose (0,n-1)
+            let shape = shape2 m n
+            let index = i2 i j
+            let offset = i*n+j
+            return $
+                liftA2 (==)
+                    ((! index) . fromListWithShape shape)
+                    (!! offset)
+                    list
+        -- @-node:gcross.20091226102316.1375:2D
+        -- @+node:gcross.20091226102316.1377:3D
+        ,testProperty "3D" $ do
+            (UTI m) <- arbitrary
+            (UTI n) <- arbitrary
+            (UTI o) <- arbitrary
+            list <- vectorOf (m*n*o) (arbitrary :: Gen Int)
+            i <- choose (0,m-1)
+            j <- choose (0,n-1)
+            k <- choose (0,o-1)
+            let shape = shape3 m n o
+            let index = i3 i j k
+            let offset = i*n*o + j*o+k
+            return $
+                liftA2 (==)
+                    ((! index) . fromListWithShape shape)
+                    (!! offset)
+                    list
+        -- @-node:gcross.20091226102316.1377:3D
+        -- @-others
+        ]
+    -- @nonl
+    -- @-node:gcross.20091226102316.1372:(!)
     -- @-others
     -- @-node:gcross.20091217190104.1416:<< Tests >>
     -- @nl

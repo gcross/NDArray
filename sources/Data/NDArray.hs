@@ -116,14 +116,16 @@ class Indexable indexType where
     numberOfElementsFromShape :: indexType -> Int
     contiguousStridesFromShape :: indexType -> indexType
     _computeNextStride :: indexType -> indexType -> Int
+    offsetUsingStrides :: indexType -> indexType -> Int
 
 instance Indexable () where
-    walk _ _ thunk = thunk
-    lastOffset _ _ = 0
+    walk () () thunk = thunk
+    lastOffset () () = 0
     reversedStrides = id
-    numberOfElementsFromShape _ = 1
-    contiguousStridesFromShape _ = ()
-    _computeNextStride _ _ = 1
+    numberOfElementsFromShape () = 1
+    contiguousStridesFromShape () = ()
+    _computeNextStride () () = 1
+    offsetUsingStrides () () = 0
 
 instance Indexable a => Indexable (Int :. a) where
     walk
@@ -148,6 +150,7 @@ instance Indexable a => Indexable (Int :. a) where
         let rest_strides = contiguousStridesFromShape rest_shape
         in _computeNextStride rest_shape rest_strides :. rest_strides
     _computeNextStride (shape :. _) (stride :. _) = shape*stride
+    offsetUsingStrides (index :. rest_index) (stride :. rest_strides) = index*stride + offsetUsingStrides rest_index rest_strides
 -- @-node:gcross.20091218165002.1490:Indexable
 -- @-node:gcross.20091217190104.1266:Classes
 -- @+node:gcross.20091219130644.1371:Exceptions
@@ -429,18 +432,39 @@ or = any id
 and = all id
 -- @-node:gcross.20091219130644.1373:any/all/and/or
 -- @-node:gcross.20091219130644.1361:Folding
--- @+node:gcross.20091224210553.1569:shapeN
-shape0 = ()
-shape1 a = a :. () :: Int :. ()
-shape2 a b = a :. b :. () :: Vec2 Int
-shape3 a b c = a :. b :. c :. () :: Vec3 Int
-shape4 a b c d = a :. b :. c :. d :. () :: Vec4 Int
-shape5 a b c d e = a :. b :. c :. d :. e :. () :: Vec5 Int
-shape6 a b c d e f = a :. b :. c :. d :. e :. f :. () :: Vec6 Int
-shape7 a b c d e f g = a :. b :. c :. d :. e :. f :. g :. () :: Vec7 Int
-shape8 a b c d e f g h = a :. b :. c :. d :. e :. f :. g :. h :. () :: Vec8 Int
-shape9 a b c d e f g h i = a :. b :. c :. d :. e :. f :. g :. h :. i :. () :: Vec9 Int
--- @-node:gcross.20091224210553.1569:shapeN
+-- @+node:gcross.20091224210553.1569:iN / shapeN
+i0 = ()
+i1 a = a :. () :: Int :. ()
+i2 a b = a :. b :. () :: Vec2 Int
+i3 a b c = a :. b :. c :. () :: Vec3 Int
+i4 a b c d = a :. b :. c :. d :. () :: Vec4 Int
+i5 a b c d e = a :. b :. c :. d :. e :. () :: Vec5 Int
+i6 a b c d e f = a :. b :. c :. d :. e :. f :. () :: Vec6 Int
+i7 a b c d e f g = a :. b :. c :. d :. e :. f :. g :. () :: Vec7 Int
+i8 a b c d e f g h = a :. b :. c :. d :. e :. f :. g :. h :. () :: Vec8 Int
+i9 a b c d e f g h i = a :. b :. c :. d :. e :. f :. g :. h :. i :. () :: Vec9 Int
+
+shape0 = i0
+shape1 = i1
+shape2 = i2
+shape3 = i3
+shape4 = i4
+shape5 = i5
+shape6 = i6
+shape7 = i7
+shape8 = i8
+shape9 = i9
+-- @-node:gcross.20091224210553.1569:iN / shapeN
+-- @+node:gcross.20091226102316.1371:computeOffsetOfIndex
+computeOffsetOfIndex :: Indexable indexType => NDArray indexType dataType -> indexType -> Int
+computeOffsetOfIndex ndarray index = ndarrayBaseOffset ndarray + offsetUsingStrides (ndarrayStrides ndarray) index
+-- @-node:gcross.20091226102316.1371:computeOffsetOfIndex
+-- @+node:gcross.20091226102316.1370:(!)
+(!) :: (Indexable indexType, Storable dataType) => NDArray indexType dataType -> indexType -> dataType
+ndarray ! index = unsafePerformIO $
+    withNDArray ndarray $
+        peek . (`advancePtr` computeOffsetOfIndex ndarray index)
+-- @-node:gcross.20091226102316.1370:(!)
 -- @-node:gcross.20091217190104.1270:Functions
 -- @-others
 -- @-node:gcross.20091217190104.1264:@thin NDArray.hs
