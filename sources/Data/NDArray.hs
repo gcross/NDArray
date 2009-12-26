@@ -17,10 +17,9 @@ module Data.NDArray where
 
 -- @<< Import needed modules >>
 -- @+node:gcross.20091217190104.1265:<< Import needed modules >>
-import Prelude hiding (foldl,foldr,catch,any,all,and,or)
-
 import Control.Applicative.Infix
 import Control.Applicative
+import Control.Arrow
 import Control.Exception
 import Control.Monad
 
@@ -45,6 +44,10 @@ import Foreign.Ptr
 import Foreign.Storable
 
 import System.IO.Unsafe
+import System.Random
+
+import Test.QuickCheck.Gen
+-- @nonl
 -- @-node:gcross.20091217190104.1265:<< Import needed modules >>
 -- @nl
 
@@ -276,7 +279,7 @@ toList ::
     (Indexable indexType, Storable dataType) =>
     NDArray indexType dataType ->
     [dataType]
-toList = foldr (:) []
+toList = foldrNDArray (:) []
 -- @-node:gcross.20091218165002.1494:toList
 -- @-node:gcross.20091217190104.1541:fromList/toList
 -- @+node:gcross.20091219130644.1360:Special case walks
@@ -332,13 +335,13 @@ fastWalk shape thunk =
 -- @-node:gcross.20091219130644.1360:Special case walks
 -- @+node:gcross.20091219130644.1361:Folding
 -- @+node:gcross.20091218165002.1491:foldl
-foldl ::
+foldlNDArray ::
     (Indexable indexType, Storable dataType) =>
     (a -> dataType -> a) ->
     a ->
     NDArray indexType dataType ->
     a
-foldl folder seed ndarray =
+foldlNDArray folder seed ndarray =
     unsafePerformIO
     .
     withNDArray ndarray
@@ -360,13 +363,13 @@ foldl folder seed ndarray =
     thunk ptr accum = peek ptr >>= evaluate . folder accum
 -- @-node:gcross.20091218165002.1491:foldl
 -- @+node:gcross.20091219130644.1359:foldr
-foldr ::
+foldrNDArray ::
     (Indexable indexType, Storable dataType) =>
     (dataType -> a -> a) ->
     a ->
     NDArray indexType dataType ->
     a
-foldr folder seed ndarray =
+foldrNDArray folder seed ndarray =
     unsafePerformIO
     .
     withNDArray ndarray
@@ -387,68 +390,19 @@ foldr folder seed ndarray =
   where
     thunk ptr accum = peek ptr >>= evaluate . flip folder accum
 -- @-node:gcross.20091219130644.1359:foldr
--- @+node:gcross.20091219130644.1362:sum/product
-sum, product ::
-    (Indexable indexType, Storable dataType, Num dataType) =>
-    NDArray indexType dataType ->
-    dataType
-sum = foldl (+) 0
-product = foldl (*) 1
--- @-node:gcross.20091219130644.1362:sum/product
--- @+node:gcross.20091219130644.1370:find
-find ::
-    (Indexable indexType, Storable dataType) =>
-    (dataType -> Bool) ->
-    NDArray indexType dataType ->
-    Maybe dataType
-find cond ndarray =
-    unsafePerformIO
-    .
-    withNDArray ndarray
-    $
-    \ptr ->
-        (
-            (if ndarrayContiguous ndarray
-                then
-                    fastWalk
-                        (ndarrayShape ndarray)
-                else
-                    walk
-                        (ndarrayShape ndarray)
-                        (ndarrayStrides ndarray)
-            )
-                thunk
-                (ptr `advancePtr` ndarrayBaseOffset ndarray)
-                ()
-            >>
-            return Nothing
-        ) `catch` (
-            \(Found location) -> fmap Just (peek . wordPtrToPtr $ location)
-        )
-
-  where
-    thunk ptr _ =
-        peek ptr
-        >>=
-        \value ->
-            if cond value
-                then throw (Found . ptrToWordPtr $ ptr)
-                else return ()
--- @-node:gcross.20091219130644.1370:find
--- @+node:gcross.20091219130644.1373:any/all/and/or
-any, all ::
-    (Indexable indexType, Storable dataType) =>
-    (dataType -> Bool) ->
-    NDArray indexType dataType ->
-    Bool
-any cond = maybe False (const True) . find cond
-all cond = maybe True (const False) . find (not . cond)
-
-or, and :: Indexable indexType => NDArray indexType Bool -> Bool
-or = any id
-and = all id
--- @-node:gcross.20091219130644.1373:any/all/and/or
 -- @-node:gcross.20091219130644.1361:Folding
+-- @+node:gcross.20091226065853.1616:Random
+-- @+node:gcross.20091226065853.1618:arbitraryNDArray
+arbitraryNDArray ::
+    (Indexable indexType
+    ,Storable dataType
+    ) =>
+    indexType ->
+    Gen dataType ->
+    Gen (NDArray indexType dataType)
+arbitraryNDArray shape = vectorOf (numberOfElementsFromShape shape) >=> return . fromListWithShape shape
+-- @-node:gcross.20091226065853.1618:arbitraryNDArray
+-- @-node:gcross.20091226065853.1616:Random
 -- @+node:gcross.20091224210553.1569:iN / shapeN
 i0 = ()
 i1 a = a :. () :: Int :. ()

@@ -29,41 +29,8 @@ import Test.QuickCheck
 
 import System.IO.Unsafe
 
-import Data.NDArray (cut
-                    ,cutOffset
-                    ,cutStrides
-                    ,cutShape
-                    ,toList
-                    ,fromList
-                    ,fromListWithShape
-                    ,contiguousStridesFromShape
-                    ,All(..)
-                    ,Index(..)
-                    ,Range(..)
-                    ,StridedRange(..)
-                    ,shape0
-                    ,shape1
-                    ,shape2
-                    ,shape3
-                    ,shape4
-                    ,shape5
-                    ,shape6
-                    ,shape7
-                    ,shape8
-                    ,shape9
-                    ,i0
-                    ,i1
-                    ,i2
-                    ,i3
-                    ,i4
-                    ,i5
-                    ,i6
-                    ,i7
-                    ,i8
-                    ,i9
-                    ,(!)
-                    )
-import qualified Data.NDArray as N
+import Data.NDArray
+import qualified Data.NDArray.Listlike as N
 -- @-node:gcross.20091217190104.1412:<< Import needed modules >>
 -- @nl
 
@@ -533,7 +500,7 @@ main = defaultMain
         -- @-node:gcross.20091224210553.1623:cutShape
         -- @+node:gcross.20091225065853.1574:cut
         ,testGroup "cut" $
-            let makeCutTests :: (forall indexType . forall dataType . (N.Indexable indexType, Storable dataType) => N.NDArray indexType dataType -> [dataType]) -> [Test.Framework.Test]
+            let makeCutTests :: (forall indexType . forall dataType . (Indexable indexType, Storable dataType) => NDArray indexType dataType -> [dataType]) -> [Test.Framework.Test]
                 makeCutTests toList =
                     -- @            @+others
                     -- @+node:gcross.20091225065853.1575:1D, null cut
@@ -758,7 +725,7 @@ main = defaultMain
                         vectorOf (m*n*o) (arbitrary :: Gen Int) >>=
                             return . liftA2 (==)
                                 (skipList o . drop i)
-                                (N.toList . cut (All :. All :. Index i :. ()) . N.fromListWithShape (shape3 m n o))
+                                (toList . cut (All :. All :. Index i :. ()) . fromListWithShape (shape3 m n o))
                     -- @-node:gcross.20091225065853.1589:3D, MxNxO, All :. All:. Index i :. ()
                     -- @-others
                     ]

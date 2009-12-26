@@ -12,6 +12,7 @@ Library
                     QuickCheck == 2.*,
                     random == 1.*,
                     Vec == 0.9.*,
-                    InfixApplicative == 1.*
+                    InfixApplicative == 1.*,
+                    QuickCheck == 2.*
 -- @-node:gcross.20091217190104.1397:@thin NDArray.cabal
 -- @-leo
