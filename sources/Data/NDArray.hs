@@ -58,6 +58,7 @@ class Cut c v where
     type CutResult c v
     cutOffset :: c -> v -> Int
     cutPreservesContiguity :: c -> v -> Bool
+    cutPreservesContiguityImplementation :: c -> v -> Bool
     cutStrides :: c -> v -> CutResult c v
     cutShape :: c -> v -> CutResult c v
 
@@ -65,20 +66,23 @@ instance Cut () () where
     type CutResult () () = ()
     cutOffset () _ = 0
     cutPreservesContiguity () _ = True
+    cutPreservesContiguityImplementation () _ = True
     cutStrides () = id
     cutShape () = id
 
 instance Cut c v => Cut (All :. c) (Int :. v) where
     type CutResult (All :. c) (Int :. v) = Int :. (CutResult c v)
     cutOffset (All :. cs) (_ :. vs) = cutOffset cs vs
-    cutPreservesContiguity (All :. cs) (_ :. vs) = cutPreservesContiguity cs vs
+    cutPreservesContiguity (_ :. cs) (_ :. vs) = cutPreservesContiguityImplementation cs vs
+    cutPreservesContiguityImplementation (All :. cs) (_ :. vs) = cutPreservesContiguityImplementation cs vs
     cutStrides (All :. cs) (stride :. vs) = stride :. cutStrides cs vs
     cutShape (All :. cs) (bound :. vs) = bound :. cutShape cs vs
 
 instance Cut c v => Cut (Index :. c) (Int :. v) where
     type CutResult (Index :. c) (Int :. v) = CutResult c v
     cutOffset (Index index :. cs) (stride :. vs) = (index*stride) + cutOffset cs vs
-    cutPreservesContiguity _ _ = False
+    cutPreservesContiguity (_ :. cs) (_ :. vs) = cutPreservesContiguityImplementation cs vs
+    cutPreservesContiguityImplementation _ _ = False
     cutStrides (_ :. cs) (_ :. vs) = cutStrides cs vs
     cutShape (Index index :. cs) (bound :. vs) =
         assert (index >= 0 || index < bound) $
@@ -87,8 +91,9 @@ instance Cut c v => Cut (Index :. c) (Int :. v) where
 instance Cut c v => Cut (Range :. c) (Int :. v) where
     type CutResult (Range :. c) (Int :. v) = Int :. (CutResult c v)
     cutOffset (Range lo _ :. cs) (stride :. vs) = (lo*stride) + cutOffset cs vs
-    cutPreservesContiguity (Range lo hi :. cs) (bound :. vs) =
-        (lo == 0) && (hi == bound) && cutPreservesContiguity cs vs
+    cutPreservesContiguity (_ :. cs) (_ :. vs) = cutPreservesContiguityImplementation cs vs
+    cutPreservesContiguityImplementation (Range lo hi :. cs) (bound :. vs) =
+        (lo == 0) && (hi == bound) && cutPreservesContiguityImplementation cs vs
     cutStrides (_ :. cs) (stride :. vs) = stride :. cutStrides cs vs
     cutShape (Range lo hi :. cs) (bound :. vs) =
         assert (lo >= 0 || hi < bound) $
@@ -97,8 +102,10 @@ instance Cut c v => Cut (Range :. c) (Int :. v) where
 instance Cut c v => Cut (StridedRange :. c) (Int :. v) where
     type CutResult (StridedRange :. c) (Int :. v) = Int :. (CutResult c v)
     cutOffset (StridedRange lo _ _ :. cs) (stride :. vs) = (lo*stride) + cutOffset cs vs
-    cutPreservesContiguity (StridedRange lo hi skip :. cs) (bound :. vs) =
-        (lo == 0) && (hi == bound) && (skip == 1) && cutPreservesContiguity cs vs
+    cutPreservesContiguity ((StridedRange _ _ skip) :. cs) (_ :. vs) =
+        (skip == 1) && cutPreservesContiguityImplementation cs vs
+    cutPreservesContiguityImplementation (StridedRange lo hi skip :. cs) (bound :. vs) =
+        (lo == 0) && (hi == bound) && (skip == 1) && cutPreservesContiguityImplementation cs vs
     cutStrides (StridedRange _ _ skip :. cs) (stride :. vs) = (skip*stride) :. cutStrides cs vs
     cutShape (StridedRange lo hi skip :. cs) (bound :. vs) =
         assert (lo >= 0 || hi < bound) $
@@ -184,11 +191,11 @@ data NDArray indexType dataType =
         {   ndarrayBaseOffset :: Int
         ,   ndarrayShape :: indexType
         ,   ndarrayStrides :: indexType
-        ,   ndarrayContiguous :: Bool
+        ,   ndarrayIsContiguous :: Bool
         ,   ndarrayData :: ForeignPtr dataType
         }
 -- @-node:gcross.20091217190104.1269:NDArray
--- @+node:gcross.20091224104908.1570:_NDArray
+-- @+node:gcross.20091224104908.1570:ArrayND aliases
 type Array1D = NDArray (Int :. ())
 type Array2D = NDArray (Vec2 Int)
 type Array3D = NDArray (Vec3 Int)
@@ -198,7 +205,7 @@ type Array6D = NDArray (Vec6 Int)
 type Array7D = NDArray (Vec7 Int)
 type Array8D = NDArray (Vec8 Int)
 type Array9D = NDArray (Vec9 Int)
--- @-node:gcross.20091224104908.1570:_NDArray
+-- @-node:gcross.20091224104908.1570:ArrayND aliases
 -- @-node:gcross.20091217190104.1268:Types
 -- @+node:gcross.20091217190104.1270:Functions
 -- @+node:gcross.20091217190104.1273:Pointer access
@@ -218,7 +225,7 @@ withNewNDArray shape thunk = do
             {   ndarrayBaseOffset = 0
             ,   ndarrayShape = shape
             ,   ndarrayStrides = contiguousStridesFromShape shape
-            ,   ndarrayContiguous = True
+            ,   ndarrayIsContiguous = True
             ,   ndarrayData = foreign_ptr
             }
         ,result
@@ -232,6 +239,13 @@ withNDArray ::
 withNDArray ndarray thunk =
     withForeignPtr (ndarrayData ndarray) thunk
 -- @-node:gcross.20091217190104.1275:withNDArray
+-- @+node:gcross.20100107102655.1390:withContiguousNDArray
+withContiguousNDArray ::
+    NDArray indexType dataType ->
+    (Ptr dataType -> IO a) ->
+    IO a
+withContiguousNDArray ndarray = assert (ndarrayIsContiguous ndarray) $ withNDArray ndarray
+-- @-node:gcross.20100107102655.1390:withContiguousNDArray
 -- @-node:gcross.20091217190104.1273:Pointer access
 -- @+node:gcross.20091217190104.1536:cut
 cut ::
@@ -244,7 +258,7 @@ cut cut_ =
         <$> (cutOffset cut_ . ndarrayStrides <^(+)^> ndarrayBaseOffset)
         <*> (cutShape cut_ . ndarrayShape)
         <*> (cutStrides cut_ . ndarrayStrides)
-        <*> (cutPreservesContiguity cut_ . ndarrayShape <^(&&)^> ndarrayContiguous)
+        <*> (ndarrayIsContiguous <^(&&)^> cutPreservesContiguity cut_ . ndarrayShape)
         <*> ndarrayData
 -- @-node:gcross.20091217190104.1536:cut
 -- @+node:gcross.20091217190104.1541:fromList/toList
@@ -347,7 +361,7 @@ foldlNDArray folder seed ndarray =
     withNDArray ndarray
     $
     \ptr ->
-        (if ndarrayContiguous ndarray
+        (if ndarrayIsContiguous ndarray
             then
                 fastWalk
                     (ndarrayShape ndarray)
@@ -375,7 +389,7 @@ foldrNDArray folder seed ndarray =
     withNDArray ndarray
     $
     \ptr ->
-        (if ndarrayContiguous ndarray
+        (if ndarrayIsContiguous ndarray
             then
                 fastReverseWalk
                     (ndarrayShape ndarray)

@@ -67,7 +67,7 @@ find cond ndarray =
     $
     \ptr ->
         (
-            (if ndarrayContiguous ndarray
+            (if ndarrayIsContiguous ndarray
                 then
                     fastWalk
                         (ndarrayShape ndarray)
