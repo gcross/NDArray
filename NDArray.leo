@@ -16,11 +16,11 @@
 <v t="gcross.20091217190104.1263"><vh>@path Data</vh>
 <v t="gcross.20091217190104.1264"><vh>@thin NDArray.hs</vh></v>
 <v t="gcross.20091226065853.1784"><vh>@path NDArray</vh>
+<v t="gcross.20100110123138.1697"><vh>@thin Classes.hs</vh></v>
 <v t="gcross.20100110123138.1670"><vh>@thin Cuts.hs</vh></v>
 <v t="gcross.20100110123138.1445"><vh>@thin Descriptor.hs</vh></v>
 <v t="gcross.20100110123138.1688"><vh>@thin Indexable.hs</vh></v>
 <v t="gcross.20091226065853.1785"><vh>@thin Listlike.hs</vh></v>
-<v t="gcross.20100110123138.1697"><vh>@thin Queryable.hs</vh></v>
 </v>
 </v>
 </v>

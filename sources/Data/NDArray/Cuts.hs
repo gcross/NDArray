@@ -100,14 +100,6 @@ instance Cut c v => Cut (StridedRange :. c) (Int :. v) where
         assert (lo >= 0 || hi < bound) $
             ((hi-lo-1) `div` skip + 1)  :. cutShape cs vs
 -- @-node:gcross.20100110123138.1687:Cut
--- @+node:gcross.20100110123138.1712:Cutable
-class Cutable constructor where
-    cut ::
-        (Cut cut oldIndexType) =>
-        cut ->
-        constructor oldIndexType dataType ->
-        constructor (CutResult cut oldIndexType) dataType
--- @-node:gcross.20100110123138.1712:Cutable
 -- @-node:gcross.20100110123138.1693:Classes
 -- @-others
 -- @-node:gcross.20100110123138.1670:@thin Cuts.hs

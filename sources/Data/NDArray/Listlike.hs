@@ -22,9 +22,9 @@ import Foreign.Storable
 import System.IO.Unsafe
 
 import Data.NDArray
+import Data.NDArray.Classes
 import Data.NDArray.Descriptor
 import Data.NDArray.Indexable
-import Data.NDArray.Queryable
 -- @-node:gcross.20091226065853.1787:<< Import needed modules >>
 -- @nl
 

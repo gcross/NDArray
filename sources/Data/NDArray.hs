@@ -35,10 +35,10 @@ import System.IO.Unsafe
 
 import Test.QuickCheck.Gen
 
+import Data.NDArray.Classes
 import Data.NDArray.Cuts
 import Data.NDArray.Descriptor
 import Data.NDArray.Indexable
-import Data.NDArray.Queryable
 -- @-node:gcross.20091217190104.1265:<< Import needed modules >>
 -- @nl
 
@@ -60,44 +60,24 @@ type Array9D = NDArray (Vec9 Int)
 -- @-node:gcross.20091224104908.1570:ArrayND aliases
 -- @-node:gcross.20091217190104.1268:Types
 -- @+node:gcross.20100110123138.1702:Instances
+-- @+node:gcross.20100110123138.1717:Accessible
+instance Accessible NDArray where
+    withNewNDArray shape = fmap (first NDArray) . withNewDescriptor shape
+    withNDArray ndarray thunk = withDescriptor (unwrapDescriptor ndarray) thunk
+    withContiguousNDArray ndarray thunk = withContiguousDescriptor (unwrapDescriptor ndarray) thunk
+-- @-node:gcross.20100110123138.1717:Accessible
+-- @+node:gcross.20100110123138.1713:Cutable
+instance Cutable NDArray where
+    cut cut_ = NDArray . cutDescriptor cut_ . unwrapDescriptor
+-- @-node:gcross.20100110123138.1713:Cutable
 -- @+node:gcross.20100110123138.1703:Queryable
 instance Queryable (NDArray indexType dataType) indexType where
     ndarrayBaseOffset = descriptorBaseOffset . unwrapDescriptor
     ndarrayShape = descriptorShape . unwrapDescriptor
     ndarrayStrides = descriptorStrides . unwrapDescriptor
 -- @-node:gcross.20100110123138.1703:Queryable
--- @+node:gcross.20100110123138.1713:Cutable
-instance Cutable NDArray where
-    cut cut_ = NDArray . cutDescriptor cut_ . unwrapDescriptor
--- @-node:gcross.20100110123138.1713:Cutable
 -- @-node:gcross.20100110123138.1702:Instances
 -- @+node:gcross.20091217190104.1270:Functions
--- @+node:gcross.20091217190104.1273:Pointer access
--- @+node:gcross.20091217190104.1274:withNewNDArray
-withNewNDArray ::
-    (Indexable indexType
-    ,Storable dataType
-    )=>
-    indexType ->
-    (Ptr dataType -> IO a) ->
-    IO (NDArray indexType dataType,a)
-withNewNDArray shape = fmap (first NDArray) . withNewDescriptor shape
--- @-node:gcross.20091217190104.1274:withNewNDArray
--- @+node:gcross.20091217190104.1275:withNDArray
-withNDArray ::
-    NDArray indexType dataType ->
-    (Ptr dataType -> IO a) ->
-    IO a
-withNDArray ndarray thunk = withDescriptor (unwrapDescriptor ndarray) thunk
--- @-node:gcross.20091217190104.1275:withNDArray
--- @+node:gcross.20100107102655.1390:withContiguousNDArray
-withContiguousNDArray ::
-    NDArray indexType dataType ->
-    (Ptr dataType -> IO a) ->
-    IO a
-withContiguousNDArray ndarray thunk = withContiguousDescriptor (unwrapDescriptor ndarray) thunk
--- @-node:gcross.20100107102655.1390:withContiguousNDArray
--- @-node:gcross.20091217190104.1273:Pointer access
 -- @+node:gcross.20091217190104.1541:fromList/toList
 -- @+node:gcross.20091217190104.1537:fromList
 fromList ::
