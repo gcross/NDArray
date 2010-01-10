@@ -30,6 +30,9 @@ import Test.QuickCheck
 import System.IO.Unsafe
 
 import Data.NDArray
+import Data.NDArray.Cuts
+import Data.NDArray.Indexable
+import Data.NDArray.Queryable
 import qualified Data.NDArray.Listlike as N
 -- @-node:gcross.20091217190104.1412:<< Import needed modules >>
 -- @nl

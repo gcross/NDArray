@@ -15,13 +15,16 @@ import Prelude hiding (foldl,foldr,catch,any,all,and,or)
 
 import Control.Exception
 
-import Data.NDArray
-
 import Foreign.Marshal
 import Foreign.Ptr
 import Foreign.Storable
 
 import System.IO.Unsafe
+
+import Data.NDArray
+import Data.NDArray.Descriptor
+import Data.NDArray.Indexable
+import Data.NDArray.Queryable
 -- @-node:gcross.20091226065853.1787:<< Import needed modules >>
 -- @nl
 
@@ -54,46 +57,6 @@ sum, product ::
 sum = foldl (+) 0
 product = foldl (*) 1
 -- @-node:gcross.20091226065853.1798:sum/product
--- @+node:gcross.20091226065853.1799:find
-find ::
-    (Indexable indexType, Storable dataType) =>
-    (dataType -> Bool) ->
-    NDArray indexType dataType ->
-    Maybe dataType
-find cond ndarray =
-    unsafePerformIO
-    .
-    withNDArray ndarray
-    $
-    \ptr ->
-        (
-            (if ndarrayIsContiguous ndarray
-                then
-                    fastWalk
-                        (ndarrayShape ndarray)
-                else
-                    walk
-                        (ndarrayShape ndarray)
-                        (ndarrayStrides ndarray)
-            )
-                thunk
-                (ptr `advancePtr` ndarrayBaseOffset ndarray)
-                ()
-            >>
-            return Nothing
-        ) `catch` (
-            \(Found location) -> fmap Just (peek . wordPtrToPtr $ location)
-        )
-
-  where
-    thunk ptr _ =
-        peek ptr
-        >>=
-        \value ->
-            if cond value
-                then throw (Found . ptrToWordPtr $ ptr)
-                else return ()
--- @-node:gcross.20091226065853.1799:find
 -- @+node:gcross.20091226065853.1800:any/all/and/or
 any, all ::
     (Indexable indexType, Storable dataType) =>
@@ -107,6 +70,14 @@ or, and :: Indexable indexType => NDArray indexType Bool -> Bool
 or = any id
 and = all id
 -- @-node:gcross.20091226065853.1800:any/all/and/or
+-- @+node:gcross.20100110123138.1710:find
+find ::
+    (Indexable indexType, Storable dataType) =>
+    (dataType -> Bool) ->
+    NDArray indexType dataType ->
+    Maybe dataType
+find = findNDArray
+-- @-node:gcross.20100110123138.1710:find
 -- @-node:gcross.20091226065853.1795:Folding
 -- @-node:gcross.20091226065853.1788:Functions
 -- @-others

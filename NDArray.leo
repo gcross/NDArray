@@ -9,14 +9,18 @@
 <preferences/>
 <find_panel_settings/>
 <vnodes>
-<v t="gcross.20091001102811.4009" str_leo_pos="4"><vh>@chapters</vh></v>
+<v t="gcross.20091001102811.4009"><vh>@chapters</vh></v>
 <v t="gcross.20091217190104.1397"><vh>@thin NDArray.cabal</vh></v>
 <v t="gcross.20091217190104.1391"><vh>@thin Setup.hs</vh></v>
 <v t="gcross.20091217190104.1395"><vh>@path sources</vh>
 <v t="gcross.20091217190104.1263"><vh>@path Data</vh>
 <v t="gcross.20091217190104.1264"><vh>@thin NDArray.hs</vh></v>
 <v t="gcross.20091226065853.1784"><vh>@path NDArray</vh>
+<v t="gcross.20100110123138.1670"><vh>@thin Cuts.hs</vh></v>
+<v t="gcross.20100110123138.1445"><vh>@thin Descriptor.hs</vh></v>
+<v t="gcross.20100110123138.1688"><vh>@thin Indexable.hs</vh></v>
 <v t="gcross.20091226065853.1785"><vh>@thin Listlike.hs</vh></v>
+<v t="gcross.20100110123138.1697"><vh>@thin Queryable.hs</vh></v>
 </v>
 </v>
 </v>
