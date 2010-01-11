@@ -12,7 +12,11 @@
 -- @<< Import needed modules >>
 -- @+node:gcross.20091217190104.1412:<< Import needed modules >>
 import Control.Applicative
+import Control.Monad
 
+import Data.Array.IArray hiding ((!))
+import Data.Array.MArray
+import Data.Array.ST
 import Data.List
 import qualified Data.Vec as V
 import Data.Vec((:.)(..))
@@ -34,6 +38,7 @@ import Data.NDArray.Classes
 import Data.NDArray.Cuts
 import Data.NDArray.Indexable
 import qualified Data.NDArray.Listlike as N
+import Data.NDArray.Mutable
 -- @-node:gcross.20091217190104.1412:<< Import needed modules >>
 -- @nl
 
@@ -819,6 +824,251 @@ main = defaultMain
         ]
     -- @nonl
     -- @-node:gcross.20091226102316.1372:(!)
+    -- @+node:gcross.20100110123138.1770:Mutable
+    ,testGroup "Mutable"
+        -- @    @+others
+        -- @+node:gcross.20100110123138.1772:createFromList / readIntoList
+        [testProperty "createFromList/readIntoList" $
+            liftA2 (==) (unsafePerformIO . (createFromList >=> readIntoList) :: [Int] -> [Int]) id
+        -- @-node:gcross.20100110123138.1772:createFromList / readIntoList
+        -- @+node:gcross.20100110123138.1790:readMutableNDArray
+        ,testGroup "readMutableNDArray"
+            -- @    @+others
+            -- @+node:gcross.20100110123138.1791:1D
+            [testProperty "1D" $
+                \(list :: [Int]) -> (not.null) list ==>
+                    choose (0,length list-1) >>= \index -> return $
+                        liftA2 (==)
+                            (unsafePerformIO . (createFromList >=> (`readMutableNDArray` i1 index)))
+                            (!! index)
+                            list
+            -- @-node:gcross.20100110123138.1791:1D
+            -- @+node:gcross.20100110123138.1792:2D
+            ,testProperty "2D" $ do
+                (UTI m) <- arbitrary
+                (UTI n) <- arbitrary
+                list <- vectorOf (m*n) (arbitrary :: Gen Int)
+                i <- choose (0,m-1)
+                j <- choose (0,n-1)
+                let shape = shape2 m n
+                let index = i2 i j
+                let offset = i*n+j
+                return $
+                    liftA2 (==)
+                        (unsafePerformIO . (createFromListWithShape shape >=> (`readMutableNDArray` index)))
+                        (!! offset)
+                        list
+            -- @-node:gcross.20100110123138.1792:2D
+            -- @+node:gcross.20100110123138.1793:3D
+            ,testProperty "3D" $ do
+                (UTI m) <- arbitrary
+                (UTI n) <- arbitrary
+                (UTI o) <- arbitrary
+                list <- vectorOf (m*n*o) (arbitrary :: Gen Int)
+                i <- choose (0,m-1)
+                j <- choose (0,n-1)
+                k <- choose (0,o-1)
+                let shape = shape3 m n o
+                let index = i3 i j k
+                let offset = i*n*o + j*o+k
+                return $
+                    liftA2 (==)
+                        (unsafePerformIO . (createFromListWithShape shape >=> (`readMutableNDArray` index)))
+                        (!! offset)
+                        list
+            -- @-node:gcross.20100110123138.1793:3D
+            -- @-others
+            ]
+        -- @nonl
+        -- @-node:gcross.20100110123138.1790:readMutableNDArray
+        -- @+node:gcross.20100110123138.1798:writeMutableNDArray
+        ,testGroup "writeMutableNDArray"
+            -- @    @+others
+            -- @+node:gcross.20100110123138.1807:1D
+            [testProperty "1D" $ do
+                size <- choose (1,10)
+                number_of_writes <- choose (1,size*size)
+                write_locations :: [Int] <- vectorOf number_of_writes (choose (0,size-1))
+                write_values :: [Int] <- vectorOf number_of_writes arbitrary
+                let ndarray_list = unsafePerformIO $ do
+                        ndarray <- createFromList (replicate size 0)
+                        forM_ (zip write_locations write_values) $
+                            \(location,value) ->
+                                writeMutableNDArray ndarray (i1 location) value
+                        readIntoList ndarray
+                    array_list = elems . runSTUArray $ do
+                        array <- newArray (0,size-1) 0
+                        forM_ (zip write_locations write_values) $
+                            \(location,value) ->
+                                writeArray array location value
+                        return array
+                return $ ndarray_list == array_list
+            -- @-node:gcross.20100110123138.1807:1D
+            -- @+node:gcross.20100110123138.1799:2D
+            ,testProperty "2D" $ do
+                size1 <- choose (1,10)
+                size2 <- choose (1,10)
+                number_of_writes <- choose (1,size1*size2)
+                write_locations_1 :: [Int] <- vectorOf number_of_writes (choose (0,size1-1))
+                write_locations_2 :: [Int] <- vectorOf number_of_writes (choose (0,size2-1))
+                write_values :: [Int] <- vectorOf number_of_writes arbitrary
+                let ndarray_list = unsafePerformIO $ do
+                        ndarray <- createFromListWithShape (shape2 size1 size2) (replicate (size1*size2) 0)
+                        forM_ (zip3 write_locations_1 write_locations_2 write_values) $
+                            \(location1,location2,value) ->
+                                writeMutableNDArray ndarray (i2 location1 location2) value
+                        readIntoList ndarray
+                    array_list = elems . runSTUArray $ do
+                        array <- newArray ((0,0),(size1-1,size2-1)) 0
+                        forM_ (zip3 write_locations_1 write_locations_2 write_values) $
+                            \(location1,location2,value) ->
+                                writeArray array (location1,location2) value
+                        return array
+                return $ ndarray_list == array_list
+            -- @-node:gcross.20100110123138.1799:2D
+            -- @+node:gcross.20100110123138.1811:3D
+            ,testProperty "3D" $ do
+                size1 <- choose (1,10)
+                size2 <- choose (1,10)
+                size3 <- choose (1,10)
+                number_of_writes <- choose (1,size1*size2*size3)
+                write_locations_1 :: [Int] <- vectorOf number_of_writes (choose (0,size1-1))
+                write_locations_2 :: [Int] <- vectorOf number_of_writes (choose (0,size2-1))
+                write_locations_3 :: [Int] <- vectorOf number_of_writes (choose (0,size3-1))
+                write_values :: [Int] <- vectorOf number_of_writes arbitrary
+                let ndarray_list = unsafePerformIO $ do
+                        ndarray <- createFromListWithShape (shape3 size1 size2 size3) (replicate (size1*size2*size3) 0)
+                        forM_ (zip4 write_locations_1 write_locations_2 write_locations_3 write_values) $
+                            \(location1,location2,location3,value) ->
+                                writeMutableNDArray ndarray (i3 location1 location2 location3) value
+                        readIntoList ndarray
+                    array_list = elems . runSTUArray $ do
+                        array <- newArray ((0,0,0),(size1-1,size2-1,size3-1)) 0
+                        forM_ (zip4 write_locations_1 write_locations_2 write_locations_3 write_values) $
+                            \(location1,location2,location3,value) ->
+                                writeArray array (location1,location2,location3) value
+                        return array
+                return $ ndarray_list == array_list
+            -- @-node:gcross.20100110123138.1811:3D
+            -- @-others
+            ]
+        -- @nonl
+        -- @-node:gcross.20100110123138.1798:writeMutableNDArray
+        -- @+node:gcross.20100110123138.1804:modifyMutableNDArray
+        ,testGroup "modifyMutableNDArray"
+            -- @    @+others
+            -- @+node:gcross.20100110123138.1805:1D
+            [testProperty "1D" $ do
+                size <- choose (1,10)
+                number_of_writes <- choose (1,size*size)
+                write_locations :: [Int] <- vectorOf number_of_writes (choose (0,size-1))
+                write_values :: [Int] <- vectorOf number_of_writes arbitrary
+                let ndarray_list = unsafePerformIO $ do
+                        ndarray <- createFromList (replicate size 0)
+                        forM_ (zip write_locations write_values) $
+                            \(location,value) ->
+                                modifyMutableNDArray ndarray (+value) (i1 location)
+                        readIntoList ndarray
+                    array_list = elems . runSTUArray $ do
+                        array <- newArray (0,size-1) 0
+                        forM_ (zip write_locations write_values) $
+                            \(location,value) ->
+                                readArray array location
+                                >>=
+                                return . (+value)
+                                >>=
+                                writeArray array location
+                        return array
+                return $ ndarray_list == array_list
+            -- @-node:gcross.20100110123138.1805:1D
+            -- @+node:gcross.20100110123138.1809:2D
+            ,testProperty "2D" $ do
+                size1 <- choose (1,10)
+                size2 <- choose (1,10)
+                number_of_writes <- choose (1,size1*size2)
+                write_locations_1 :: [Int] <- vectorOf number_of_writes (choose (0,size1-1))
+                write_locations_2 :: [Int] <- vectorOf number_of_writes (choose (0,size2-1))
+                write_values :: [Int] <- vectorOf number_of_writes arbitrary
+                let ndarray_list = unsafePerformIO $ do
+                        ndarray <- createFromListWithShape (shape2 size1 size2) (replicate (size1*size2) 0)
+                        forM_ (zip3 write_locations_1 write_locations_2 write_values) $
+                            \(location1,location2,value) ->
+                                modifyMutableNDArray ndarray (+value) (i2 location1 location2)
+                        readIntoList ndarray
+                    array_list = elems . runSTUArray $ do
+                        array <- newArray ((0,0),(size1-1,size2-1)) 0
+                        forM_ (zip3 write_locations_1 write_locations_2 write_values) $
+                            \(location1,location2,value) ->
+                                readArray array (location1,location2)
+                                >>=
+                                return . (+value)
+                                >>=
+                                writeArray array (location1,location2)
+                        return array
+                return $ ndarray_list == array_list
+            -- @-node:gcross.20100110123138.1809:2D
+            -- @+node:gcross.20100110123138.1813:3D
+            ,testProperty "3D" $ do
+                size1 <- choose (1,10)
+                size2 <- choose (1,10)
+                size3 <- choose (1,10)
+                number_of_writes <- choose (1,size1*size2*size3)
+                write_locations_1 :: [Int] <- vectorOf number_of_writes (choose (0,size1-1))
+                write_locations_2 :: [Int] <- vectorOf number_of_writes (choose (0,size2-1))
+                write_locations_3 :: [Int] <- vectorOf number_of_writes (choose (0,size3-1))
+                write_values :: [Int] <- vectorOf number_of_writes arbitrary
+                let ndarray_list = unsafePerformIO $ do
+                        ndarray <- createFromListWithShape (shape3 size1 size2 size3) (replicate (size1*size2*size3) 0)
+                        forM_ (zip4 write_locations_1 write_locations_2 write_locations_3 write_values) $
+                            \(location1,location2,location3,value) ->
+                                modifyMutableNDArray ndarray (+value) (i3 location1 location2 location3)
+                        readIntoList ndarray
+                    array_list = elems . runSTUArray $ do
+                        array <- newArray ((0,0,0),(size1-1,size2-1,size3-1)) 0
+                        forM_ (zip4 write_locations_1 write_locations_2 write_locations_3 write_values) $
+                            \(location1,location2,location3,value) ->
+                                readArray array (location1,location2,location3)
+                                >>=
+                                return . (+value)
+                                >>=
+                                writeArray array (location1,location2,location3)
+                        return array
+                return $ ndarray_list == array_list
+            -- @-node:gcross.20100110123138.1813:3D
+            -- @-others
+            ]
+        -- @nonl
+        -- @-node:gcross.20100110123138.1804:modifyMutableNDArray
+        -- @+node:gcross.20100110123138.1777:folding
+        ,testGroup "folding" $
+            -- @    @+others
+            -- @+node:gcross.20100110123138.1774:sumMutableNDArray
+            [testProperty "sumMutableNDArray" $
+                liftA2 (==) (unsafePerformIO . (createFromList >=> sumMutableNDArray)) (sum :: [Int] -> Int)
+            -- @-node:gcross.20100110123138.1774:sumMutableNDArray
+            -- @+node:gcross.20100110123138.1779:productMutableNDArray
+            ,testProperty "productMutableNDArray" $
+                liftA2 (==) (unsafePerformIO . (createFromList >=> productMutableNDArray)) (product :: [Int] -> Int)
+            -- @-node:gcross.20100110123138.1779:productMutableNDArray
+            -- @+node:gcross.20100110123138.1783:andMutableNDArray
+            ,testProperty "andMutableNDArray" $
+                \flag ->
+                    liftA2 (==) (unsafePerformIO . (createFromList >=> andMutableNDArray)) (and :: [Bool] -> Bool) .
+                        if flag then map (const True) else id
+            -- @-node:gcross.20100110123138.1783:andMutableNDArray
+            -- @+node:gcross.20100110123138.1785:orMutableNDArray
+            ,testProperty "orMutableNDArray" $
+                \flag ->
+                    liftA2 (==) (unsafePerformIO . (createFromList >=> orMutableNDArray)) (or :: [Bool] -> Bool) .
+                        if flag then map (const False) else id
+            -- @-node:gcross.20100110123138.1785:orMutableNDArray
+            -- @-others
+            ]
+        -- @-node:gcross.20100110123138.1777:folding
+        -- @-others
+        ]
+    -- @nonl
+    -- @-node:gcross.20100110123138.1770:Mutable
     -- @-others
     -- @-node:gcross.20091217190104.1416:<< Tests >>
     -- @nl

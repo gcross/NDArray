@@ -15,6 +15,7 @@ main =
          ,"test-framework-hunit == 0.2.*"
          ,"test-framework-quickcheck2 == 0.2.*"
          ,"random == 1.*"
+         ,"array == 0.2.*"
          ]
         ))
         []
