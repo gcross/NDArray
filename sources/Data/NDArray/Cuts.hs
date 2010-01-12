@@ -51,8 +51,8 @@ class Cut c v where
     cutStrides :: c -> v -> CutResult c v
     cutShape :: c -> v -> CutResult c v
 
-instance Cut () () where
-    type CutResult () () = ()
+instance Cut () v where
+    type CutResult () v = v
     cutOffset () _ = 0
     cutPreservesContiguity () _ = True
     cutPreservesContiguityImplementation () _ = True
