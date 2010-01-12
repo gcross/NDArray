@@ -5,6 +5,7 @@
 -- @<< Language extensions >>
 -- @+node:gcross.20100110123138.1701:<< Language extensions >>
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
 -- @-node:gcross.20100110123138.1701:<< Language extensions >>
 -- @nl
 
@@ -49,10 +50,11 @@ class Cutable constructor where
         constructor (CutResult cut oldIndexType) dataType
 -- @-node:gcross.20100110123138.1715:Cutable
 -- @+node:gcross.20100110123138.1699:Queryable
-class Queryable ndarrayType indexType where
+class Queryable ndarrayType where
+    type QueryResultType ndarrayType
     ndarrayBaseOffset :: ndarrayType -> Int
-    ndarrayShape :: ndarrayType -> indexType
-    ndarrayStrides :: ndarrayType -> indexType
+    ndarrayShape :: ndarrayType -> QueryResultType ndarrayType
+    ndarrayStrides :: ndarrayType -> QueryResultType ndarrayType
 -- @-node:gcross.20100110123138.1699:Queryable
 -- @-node:gcross.20100110123138.1698:Classes
 -- @-others

@@ -7,6 +7,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
 -- @-node:gcross.20091217190104.1420:<< Language extensions >>
 -- @nl
 
@@ -71,7 +72,8 @@ instance Cutable NDArray where
     cut cut_ = NDArray . cutDescriptor cut_ . unwrapDescriptor
 -- @-node:gcross.20100110123138.1713:Cutable
 -- @+node:gcross.20100110123138.1703:Queryable
-instance Queryable (NDArray indexType dataType) indexType where
+instance Queryable (NDArray indexType dataType) where
+    type QueryResultType (NDArray indexType dataType) = indexType
     ndarrayBaseOffset = descriptorBaseOffset . unwrapDescriptor
     ndarrayShape = descriptorShape . unwrapDescriptor
     ndarrayStrides = descriptorStrides . unwrapDescriptor
