@@ -33,10 +33,12 @@ class Accessible constructor where
         (Ptr dataType -> IO a) ->
         IO (constructor indexType dataType,a)
     withNDArray ::
+        Storable dataType =>
         constructor indexType dataType ->
         (Ptr dataType -> IO a) ->
         IO a
     withContiguousNDArray ::
+        Storable dataType =>
         constructor indexType dataType ->
         (Ptr dataType -> IO a) ->
         IO a

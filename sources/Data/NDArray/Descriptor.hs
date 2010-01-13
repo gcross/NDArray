@@ -58,7 +58,7 @@ instance (Show a, Typeable a) => Exception (Found a)
 -- @-node:gcross.20100110123138.1708:Exceptions
 -- @+node:gcross.20100110123138.1461:Functions
 -- @+node:gcross.20100110123138.1462:Pointer access
--- @+node:gcross.20100110123138.1463:withNewNDArray
+-- @+node:gcross.20100110123138.1463:withNewDescriptor
 withNewDescriptor ::
     (Indexable indexType
     ,Storable dataType
@@ -79,24 +79,26 @@ withNewDescriptor shape thunk = do
             }
         ,result
         )
--- @-node:gcross.20100110123138.1463:withNewNDArray
--- @+node:gcross.20100110123138.1464:withNDArray
+-- @-node:gcross.20100110123138.1463:withNewDescriptor
+-- @+node:gcross.20100110123138.1464:withDescriptor
 withDescriptor ::
+    Storable dataType =>
     Descriptor indexType dataType ->
     (Ptr dataType -> IO a) ->
     IO a
 withDescriptor ndarray thunk =
-    withForeignPtr (descriptorData ndarray) thunk
--- @-node:gcross.20100110123138.1464:withNDArray
--- @+node:gcross.20100110123138.1465:withContiguousNDArray
+    withForeignPtr (descriptorData ndarray) (thunk . (`advancePtr` descriptorBaseOffset ndarray))
+-- @-node:gcross.20100110123138.1464:withDescriptor
+-- @+node:gcross.20100110123138.1465:withContiguousDescriptor
 withContiguousDescriptor ::
+    Storable dataType =>
     Descriptor indexType dataType ->
     (Ptr dataType -> IO a) ->
     IO a
 withContiguousDescriptor ndarray =
     assert (descriptorIsContiguous ndarray) $
     withDescriptor ndarray
--- @-node:gcross.20100110123138.1465:withContiguousNDArray
+-- @-node:gcross.20100110123138.1465:withContiguousDescriptor
 -- @-node:gcross.20100110123138.1462:Pointer access
 -- @+node:gcross.20100110123138.1466:cutDescriptor
 cutDescriptor ::
@@ -218,7 +220,7 @@ foldlDescriptor folder seed ndarray =
                     (descriptorStrides ndarray)
         )
             thunk
-            (ptr `advancePtr` descriptorBaseOffset ndarray)
+            ptr
             seed
   where
     thunk ptr accum = peek ptr >>= evaluate . folder accum
@@ -244,7 +246,7 @@ foldrDescriptor folder seed ndarray =
                     (descriptorStrides ndarray)
         )
             thunk
-            (ptr `advancePtr` descriptorBaseOffset ndarray)
+            ptr
             seed
   where
     thunk ptr accum = peek ptr >>= evaluate . flip folder accum
