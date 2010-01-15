@@ -41,11 +41,11 @@ import Data.NDArray.Indexable
 -- @+node:gcross.20100110123138.1459:Descriptor
 data Descriptor indexType dataType =
     Descriptor
-        {   descriptorBaseOffset :: Int
-        ,   descriptorShape :: indexType
-        ,   descriptorStrides :: indexType
-        ,   descriptorIsContiguous :: Bool
-        ,   descriptorData :: ForeignPtr dataType
+        {   descriptorBaseOffset :: !Int
+        ,   descriptorShape :: !indexType
+        ,   descriptorStrides :: !indexType
+        ,   descriptorIsContiguous :: !Bool
+        ,   descriptorData :: !(ForeignPtr dataType)
         }
 -- @-node:gcross.20100110123138.1459:Descriptor
 -- @-node:gcross.20100110123138.1453:Types
