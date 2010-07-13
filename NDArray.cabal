@@ -7,9 +7,8 @@ Cabal-Version:  >= 1.6
 Build-Type:     Custom
 
 Library
-    Build-Depends:  base == 4.1.*,
+    Build-Depends:  base >= 4.1 && < 5,
                     Blueprint >= 0.2,
-                    QuickCheck == 2.*,
                     random == 1.*,
                     Vec == 0.9.*,
                     InfixApplicative == 1.*,

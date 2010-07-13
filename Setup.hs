@@ -11,11 +11,11 @@ main =
          ("","tests"),
          [],
          ["HUnit == 1.*"
-         ,"test-framework == 0.2.*"
+         ,"test-framework >= 0.2 && < 0.3.2"
          ,"test-framework-hunit == 0.2.*"
          ,"test-framework-quickcheck2 == 0.2.*"
          ,"random == 1.*"
-         ,"array == 0.2.*"
+         ,"array >= 0.2 && < 0.4"
          ]
         ))
         []
